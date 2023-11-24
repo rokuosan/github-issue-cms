@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -59,4 +60,11 @@ func DownloadImage(url string, id string, number int) {
 		return
 	}
 	slog.Info(fmt.Sprintf("Status code: %d", resp.StatusCode))
+
+	// Write the body to file
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	slog.Info("Downloaded image: " + dest)
 }
