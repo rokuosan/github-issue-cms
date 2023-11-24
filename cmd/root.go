@@ -20,9 +20,6 @@ var rootCmd = &cobra.Command{
 		URL := fmt.Sprintf("https://github.com/%s/%s", username, repository)
 		slog.Info(fmt.Sprintf("Target Repository: %s\n", URL))
 
-		// Download images
-		internal.DownloadImage("https://github.com/rokuosan/tcardgen/blob/master/example/blogpost2.png", "test", 1)
-
 		return nil
 	},
 }
