@@ -1,0 +1,7 @@
+github:
+  username: 'rokuosan'
+  repository: 'github-issue-cms'
+
+hugo:
+  path:
+    images: './static/images'
