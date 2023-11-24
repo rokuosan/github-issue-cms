@@ -47,9 +47,10 @@ func DownloadImage(url string, id string, number int) {
 	}
 	defer resp.Body.Close()
 
-	// Check status code
-	if resp.StatusCode != 200 {
-		slog.Error(fmt.Sprintf("Status code: %d", resp.StatusCode))
+	// Check response
+	contentType := resp.Header.Get("Content-Type")
+	if resp.StatusCode != 200 || contentType != "image/png" {
+		slog.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
 
 		// Remove the file
 		err := os.Remove(dest)
@@ -59,12 +60,12 @@ func DownloadImage(url string, id string, number int) {
 
 		return
 	}
-	slog.Info(fmt.Sprintf("Status code: %d", resp.StatusCode))
+	slog.Info(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
 
 	// Write the body to file
-	_, err = io.Copy(file, resp.Body)
+	written, err := io.Copy(file, resp.Body)
 	if err != nil {
 		panic(err)
 	}
-	slog.Info("Downloaded image: " + dest)
+	slog.Info("Downloaded image: " + dest + " (" + fmt.Sprintf("%d", written) + " bytes)")
 }
