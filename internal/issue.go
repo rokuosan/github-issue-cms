@@ -119,7 +119,15 @@ func IssueToArticle(issue *github.Issue) *Article {
 
 func ExportArticle(article *Article, id string) {
 	// Create directory
-	path := filepath.Join("content", "posts", id+".md")
+	path := filepath.Join("content", "posts")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(path, 0777); err != nil {
+			panic(err)
+		}
+	}
+
+	// Create file
+	path = filepath.Join("content", "posts", id+".md")
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)
@@ -141,5 +149,6 @@ func ExportArticle(article *Article, id string) {
 	w.WriteString("draft: " + fmt.Sprintf("%t", article.Draft) + "\n")
 	w.WriteString(article.ExtraFrontMatter)
 	w.WriteString("---\n")
+	w.WriteString(article.Content)
 	w.Flush()
 }
