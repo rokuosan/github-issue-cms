@@ -7,18 +7,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/viper"
 )
 
 // DownloadImage downloads an image from the URL and save it to the local file system.
 func DownloadImage(url string, id string, number int) {
 	// Expect like this: ./static/images/
-	imagesPath := viper.GetString("hugo.path.images")
-	if imagesPath == "" {
-		slog.Error("Please set hugo.path.images in gic.config")
-		return
-	}
+	imagesPath := ImagesPath
 	base := filepath.Join(imagesPath, id)
 	dest := filepath.Join(base, fmt.Sprintf("%d", number)+".png")
 
