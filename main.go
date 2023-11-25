@@ -12,7 +12,7 @@ func main() {
 	// Measure the time it takes to run the program
 	startTime := time.Now()
 	defer func() {
-		slog.Info(fmt.Sprintf("Program took %f seconds\n", time.Since(startTime).Seconds()))
+		slog.Info(fmt.Sprintf("Finished in %f seconds\n", time.Since(startTime).Seconds()))
 	}()
 
 	// Execute the root command
