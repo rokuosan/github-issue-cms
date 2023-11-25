@@ -72,10 +72,22 @@ func IssueToArticle(issue *github.Issue) *Article {
 		return ""
 	}()
 
-	// Remove front matter from content
+	// Get content
 	content := issue.GetBody()
+	content = strings.Replace(content, "\r", "", -1)
+
+	// Remove front matter from content
 	if frontMatter != "" {
-		content = strings.Replace(content, "```"+frontMatter+"```", "", 1)
+		content = strings.Replace(content, frontMatter, "", 1)
+		content = strings.Replace(content, "```", "", 2)
+	}
+
+	// Remove empty lines at the beginning
+	content = strings.TrimLeft(content, "\n")
+
+	// Insert empty line at the end if not exists
+	if !strings.HasSuffix(content, "\n") {
+		content = content + "\n"
 	}
 
 	// Replace image URL to local path
