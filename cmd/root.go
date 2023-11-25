@@ -15,20 +15,31 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Initialize
 		internal.Init()
-		logger := internal.Logger
+		Logger := internal.Logger
 
 		// Print info
 		username := viper.GetString("github.username")
 		repository := viper.GetString("github.repository")
 		if username == "" || repository == "" {
-			logger.Error("Please set username and repository in gic.config")
+			Logger.Error("Please set username and repository in gic.config")
 			return
 		}
 		URL := fmt.Sprintf("https://github.com/%s/%s", username, repository)
-		logger.Info(fmt.Sprintf("Target Repository: %s", URL))
+		Logger.Info(fmt.Sprintf("Target Repository: %s", URL))
 
 		// Get issues
+		Logger.Info("Getting issues...")
+		issues := internal.GetIssues()
+		Logger.Infof("Found %d issues", len(issues))
 
+		// Create articles
+		Logger.Info("Creating articles...")
+		for _, issue := range issues {
+			article := internal.IssueToArticle(issue)
+			if article != nil {
+				internal.ExportArticle(article, fmt.Sprintf("%d", issue.GetID()))
+			}
+		}
 	},
 }
 
