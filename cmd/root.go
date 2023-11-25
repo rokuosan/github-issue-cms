@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 			return
 		}
 		URL := fmt.Sprintf("https://github.com/%s/%s", username, repository)
-		logger.Info(fmt.Sprintf("Target Repository: %s\n", URL))
+		logger.Info(fmt.Sprintf("Target Repository: %s", URL))
 
 		// Get issues
 
