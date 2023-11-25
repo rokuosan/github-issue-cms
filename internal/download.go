@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,7 +17,7 @@ func DownloadImage(url string, id string, number int) {
 
 	// Create directory
 	if _, err := os.Stat(base); os.IsNotExist(err) {
-		slog.Info("Creating directory: " + base)
+		Logger.Info("Creating directory: " + base)
 		err := os.MkdirAll(base, 0777)
 		if err != nil {
 			panic(err)
@@ -26,7 +25,7 @@ func DownloadImage(url string, id string, number int) {
 	}
 
 	// Prepare a new file
-	slog.Info("Downloading image: " + url)
+	Logger.Info("Downloading image: " + url)
 	file, err := os.Create(dest)
 	if err != nil {
 		panic(err)
@@ -49,7 +48,7 @@ func DownloadImage(url string, id string, number int) {
 	// Check response
 	contentType := resp.Header.Get("Content-Type")
 	if resp.StatusCode != 200 || contentType != "image/png" {
-		slog.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
+		Logger.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
 
 		// Remove the file
 		err := os.Remove(dest)
@@ -59,12 +58,12 @@ func DownloadImage(url string, id string, number int) {
 
 		return
 	}
-	slog.Info(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
+	Logger.Info(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
 
 	// Write the body to file
 	written, err := io.Copy(file, resp.Body)
 	if err != nil {
 		panic(err)
 	}
-	slog.Info("Downloaded image: " + dest + " (" + fmt.Sprintf("%d", written) + " bytes)")
+	Logger.Info("Downloaded image: " + dest + " (" + fmt.Sprintf("%d", written) + " bytes)")
 }
