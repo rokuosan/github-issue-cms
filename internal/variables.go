@@ -1,5 +1,8 @@
 package internal
 
+import "github.com/google/go-github/v56/github"
+
 var (
-	GitHubToken string
+	GitHubToken  string
+	GitHubClient *github.Client
 )

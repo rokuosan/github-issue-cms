@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/google/go-github/v56/github"
 	"github.com/rokuosan/github-issue-cms/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -13,14 +14,24 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "github-issue-cms",
 	Short: "A brief description of your application",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		// Print info
 		username := viper.GetString("github.username")
 		repository := viper.GetString("github.repository")
+		if username == "" || repository == "" {
+			slog.Error("Please set username and repository in gic.config")
+			return
+		}
 		URL := fmt.Sprintf("https://github.com/%s/%s", username, repository)
 		slog.Info(fmt.Sprintf("Target Repository: %s\n", URL))
 
-		return nil
+		// Prepare Client
+		slog.Info("Preparing GitHub Client...")
+		internal.GitHubClient = github.NewClient(nil).WithAuthToken(internal.GitHubToken)
+		slog.Info("Done\n")
+
+		// Get issues
+
 	},
 }
 
