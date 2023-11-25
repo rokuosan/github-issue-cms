@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// DownloadImage downloads an image from the URL and save it to the local file system.
 func DownloadImage(url string, id string, number int) {
 	// Expect like this: ./static/images/
 	imagesPath := viper.GetString("hugo.path.images")
@@ -39,7 +40,7 @@ func DownloadImage(url string, id string, number int) {
 	if err != nil {
 		panic(err)
 	}
-	req.Header.Set("Authorization", "token "+Token)
+	req.Header.Set("Authorization", "token "+GitHubToken)
 	client := new(http.Client)
 	resp, err := client.Do(req)
 	if err != nil {

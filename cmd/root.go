@@ -42,6 +42,6 @@ func init() {
 	}
 
 	// Flags
-	rootCmd.PersistentFlags().StringVarP(&internal.Token, "token", "t", "", "GitHub API Token")
+	rootCmd.PersistentFlags().StringVarP(&internal.GitHubToken, "token", "t", "", "GitHub API Token")
 	rootCmd.MarkPersistentFlagRequired("token")
 }

@@ -1,5 +1,5 @@
 package internal
 
 var (
-	Token string
+	GitHubToken string
 )
