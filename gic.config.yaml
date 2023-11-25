@@ -3,5 +3,5 @@ github:
   repository: 'github-issue-cms'
 
 hugo:
-  path:
-    images: './static/images'
+  url:
+    images: '/images'
