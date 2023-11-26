@@ -11,7 +11,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "github-issue-cms",
-	Short: "A brief description of your application",
+	Short: "Generate articles from GitHub issues for Hugo",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Initialize
 		internal.Init()
