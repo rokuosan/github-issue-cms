@@ -21,7 +21,7 @@ var rootCmd = &cobra.Command{
 		username := viper.GetString("github.username")
 		repository := viper.GetString("github.repository")
 		if username == "" || repository == "" {
-			Logger.Error("Please set username and repository in gic.config")
+			Logger.Error("Please set username and repository in gic.config.yaml")
 			return
 		}
 		URL := fmt.Sprintf("https://github.com/%s/%s", username, repository)
