@@ -14,6 +14,11 @@ import (
 )
 
 func GetIssues() []*github.Issue {
+	if GitHubClient == nil {
+		SetupGitHubClient()
+		return GetIssues()
+	}
+
 	// Get Issues
 	client := GitHubClient
 	username := viper.GetString("github.username")
