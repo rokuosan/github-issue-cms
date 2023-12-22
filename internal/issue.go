@@ -23,6 +23,11 @@ func GetIssues() []*github.Issue {
 	client := GitHubClient
 	username := viper.GetString("github.username")
 	repository := viper.GetString("github.repository")
+	if username == "" || repository == "" {
+		Logger.Error("Please set username and repository in gic.config.yaml")
+		return nil
+	}
+
 	issuesAndPRs, _, err := client.Issues.ListByRepo(
 		context.Background(),
 		username,
@@ -67,14 +72,14 @@ func IssueToArticle(issue *github.Issue) *Article {
 	Logger.Debug("Processing issue ID: " + id)
 
 	// Get front matter
-	frontMatter := func() string {
+	frontMatter := func() []string {
 		re := regexp.MustCompile("(?s)^\\s*```[\\n|\\r|\\n\\r]([^`]*)[\\n|\\r|\\n\\r]```")
 		match := re.FindStringSubmatch(issue.GetBody())
 		if len(match) > 0 {
-			return match[1]
+			return match
 		}
 
-		return ""
+		return nil
 	}()
 
 	// Get content
@@ -82,9 +87,8 @@ func IssueToArticle(issue *github.Issue) *Article {
 	content = strings.Replace(content, "\r", "", -1)
 
 	// Remove front matter from content
-	if frontMatter != "" {
-		content = strings.Replace(content, frontMatter, "", 1)
-		content = strings.Replace(content, "```", "", 2)
+	if frontMatter != nil {
+		content = strings.Replace(content, frontMatter[0], "", 1)
 	}
 
 	// Remove empty lines at the beginning
@@ -123,7 +127,7 @@ func IssueToArticle(issue *github.Issue) *Article {
 		Category:         issue.GetMilestone().GetTitle(),
 		Draft:            issue.GetState() != "closed",
 		Content:          content,
-		ExtraFrontMatter: frontMatter,
+		ExtraFrontMatter: frontMatter[1],
 		Tags: func() []string {
 			tags := []string{}
 			for _, label := range issue.Labels {

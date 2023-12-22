@@ -31,7 +31,9 @@ The articles will be saved in the "content" directory.`,
 		// Get issues
 		logger.Info("Getting issues...")
 		issues := internal.GetIssues()
-		if len(issues) == 0 {
+		if issues == nil {
+			return
+		} else if len(issues) == 0 {
 			logger.Info("No issues found")
 			return
 		} else {
