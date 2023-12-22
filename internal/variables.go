@@ -19,7 +19,7 @@ var (
 	ImagesURL  string
 )
 
-func Init() {
+func SetupLogger() {
 	// Logger
 	config := zap.NewDevelopmentConfig()
 	if Debug {
@@ -31,19 +31,26 @@ func Init() {
 	logger, _ := config.Build()
 	defer logger.Sync()
 	Logger = *logger.Sugar()
+}
+
+func SetupGitHubClient() {
+	if GitHubToken == "" {
+		Logger.Error("Please set GitHub Token in gic.config.yaml")
+		return
+	}
 
 	// GitHub Client
-	Logger.Info("Preparing GitHub Client...")
+	Logger.Debug("Preparing GitHub Client...")
 	GitHubClient = github.NewClient(nil).WithAuthToken(GitHubToken)
 	Logger.Debug("GitHub Client: " + GitHubClient.UserAgent)
 
 	// Images URL
-	Logger.Info("Preparing Images URL...")
+	Logger.Debug("Preparing Images URL...")
 	ImagesURL = viper.GetString("hugo.url.images")
 	Logger.Debug("Images URL: " + ImagesURL)
 
 	// Images Path
-	Logger.Info("Preparing Images Path...")
+	Logger.Debug("Preparing Images Path...")
 	ImagesPath = filepath.Join("./static", ImagesURL)
 	Logger.Debug("Images Path: " + ImagesPath)
 }
