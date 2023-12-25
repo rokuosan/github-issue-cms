@@ -71,20 +71,20 @@ func IssueToArticle(issue *github.Issue) *Article {
 	id := fmt.Sprintf("%d", *issue.ID)
 	Logger.Debug("Processing issue ID: " + id)
 
+	// Get content
+	content := issue.GetBody()
+	content = strings.Replace(content, "\r", "", -1)
+
 	// Get front matter
 	frontMatter := func() []string {
 		re := regexp.MustCompile("(?s)^\\s*```[\\n|\\r|\\n\\r]([^`]*)[\\n|\\r|\\n\\r]```")
-		match := re.FindStringSubmatch(issue.GetBody())
+		match := re.FindStringSubmatch(content)
 		if len(match) > 0 {
 			return match
 		}
 
 		return nil
 	}()
-
-	// Get content
-	content := issue.GetBody()
-	content = strings.Replace(content, "\r", "", -1)
 
 	// Remove front matter from content
 	if frontMatter != nil {
@@ -169,7 +169,7 @@ func ExportArticle(article *Article, id string) {
 	}
 	w.WriteString("draft: " + fmt.Sprintf("%t", article.Draft) + "\n")
 	w.WriteString(article.ExtraFrontMatter)
-	w.WriteString("---\n")
+	w.WriteString("\n---\n")
 	w.WriteString(article.Content)
 	w.Flush()
 }
