@@ -108,7 +108,7 @@ func IssueToArticle(issue *github.Issue) *Article {
 	for i, m := range match {
 		url := m[1]
 		before := m[0]
-		replaced := "![" + url + "](/images/" + id + "/" + fmt.Sprintf("%d", i) + ".png)"
+		replaced := "![" + url + "](images/" + id + "/" + fmt.Sprintf("%d", i) + ".png)"
 
 		// Skip if already replaced
 		if strings.Contains(content, replaced) {
@@ -128,7 +128,7 @@ func IssueToArticle(issue *github.Issue) *Article {
 		alt := m[1]
 		url := m[2]
 		before := m[0]
-		replaced := "![" + alt + "](/images/" + id + "/" + fmt.Sprintf("%d", i) + ".png)"
+		replaced := "![" + alt + "](images/" + id + "/" + fmt.Sprintf("%d", i) + ".png)"
 
 		fmt.Println("Replace: " + url)
 		DownloadImage(url, id, i)
