@@ -3,6 +3,7 @@ package internal
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,10 +39,12 @@ func GetIssues() []*github.Issue {
 	)
 
 	// Check Rate Limits
-	if _, ok := err.(*github.RateLimitError); ok {
+	var rateLimitError *github.RateLimitError
+	if errors.As(err, &rateLimitError) {
 		Logger.Error("hit rate limit")
 	}
-	if _, ok := err.(*github.AbuseRateLimitError); ok {
+	var abuseRateLimitError *github.AbuseRateLimitError
+	if errors.As(err, &abuseRateLimitError) {
 		Logger.Error("hit secondary rate limit")
 	}
 	if err != nil {
@@ -49,7 +52,7 @@ func GetIssues() []*github.Issue {
 	}
 
 	// Filter issues
-	issues := []*github.Issue{}
+	var issues []*github.Issue
 	for _, item := range issuesAndPRs {
 		// Skip if it is a pull request.
 		if item.IsPullRequest() {
@@ -77,7 +80,7 @@ func IssueToArticle(issue *github.Issue) *Article {
 
 	// Get front matter
 	frontMatter := func() []string {
-		re := regexp.MustCompile("(?s)^\\s*```[\\n|\\r|\\n\\r]([^`]*)[\\n|\\r|\\n\\r]```")
+		re := regexp.MustCompile("(?s)^\\s*```[\\n|\\r]([^`]*)[\\n|\\r]```")
 		match := re.FindStringSubmatch(content)
 		if len(match) > 0 {
 			return match
@@ -100,7 +103,7 @@ func IssueToArticle(issue *github.Issue) *Article {
 	}
 
 	// Replace image URL to local path
-	re := regexp.MustCompile(`!\[image*\]\((.*)\)`)
+	re := regexp.MustCompile(`!\[image*]\((.*)\)`)
 	match := re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
 		url := m[1]
@@ -116,6 +119,20 @@ func IssueToArticle(issue *github.Issue) *Article {
 		DownloadImage(url, id, i)
 
 		// Replace url to local path
+		content = strings.Replace(content, before, replaced, -1)
+	}
+
+	re = regexp.MustCompile(`<img width="\d+" alt="(\w+)" src="(\S+)">`)
+	match = re.FindAllStringSubmatch(content, -1)
+	for i, m := range match {
+		alt := m[1]
+		url := m[2]
+		before := m[0]
+		replaced := "![" + alt + "](/images/" + id + "/" + fmt.Sprintf("%d", i) + ".png)"
+
+		fmt.Println("Replace: " + url)
+		DownloadImage(url, id, i)
+
 		content = strings.Replace(content, before, replaced, -1)
 	}
 
@@ -156,20 +173,38 @@ func ExportArticle(article *Article, id string) {
 	defer file.Close()
 	Logger.Info("Export article: " + path)
 
+	// Build string
+	content := make([]byte, 0, 1024)
+	tags := make([]byte, 0, 128)
+	for _, t := range article.Tags {
+		tags = append(tags, "  - "...)
+		tags = append(tags, t...)
+		tags = append(tags, '\n')
+	}
+	raw := strings.TrimSpace(fmt.Sprintf(`---
+title: %s
+author: %s
+date: %s
+draft: %t
+categories: 
+  - %s
+tags:
+%s
+%s
+---
+
+%s`, article.Title,
+		article.Author,
+		article.Date,
+		article.Draft,
+		article.Category,
+		tags,
+		article.ExtraFrontMatter,
+		article.Content))
+	content = append(content, raw...)
+
 	// Write file
 	w := bufio.NewWriter(file)
-	w.WriteString("---\n")
-	w.WriteString("title: " + article.Title + "\n")
-	w.WriteString("author: " + article.Author + "\n")
-	w.WriteString("date: " + article.Date + "\n")
-	w.WriteString("categories:\n  - " + article.Category + "\n")
-	w.WriteString("tags:\n")
-	for _, tag := range article.Tags {
-		w.WriteString("  - " + tag + "\n")
-	}
-	w.WriteString("draft: " + fmt.Sprintf("%t", article.Draft) + "\n")
-	w.WriteString(article.ExtraFrontMatter)
-	w.WriteString("\n---\n")
-	w.WriteString(article.Content)
-	w.Flush()
+	_, _ = w.WriteString(string(content))
+	_ = w.Flush()
 }

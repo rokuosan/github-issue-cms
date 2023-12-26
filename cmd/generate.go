@@ -57,6 +57,6 @@ func init() {
 
 	// GitHub Token
 	generateCmd.Flags().StringVarP(&internal.GitHubToken, "token", "t", "", "GitHub API Token")
-	generateCmd.MarkFlagRequired("token")
+	_ = generateCmd.MarkFlagRequired("token")
 
 }
