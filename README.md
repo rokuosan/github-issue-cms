@@ -37,7 +37,7 @@ hugo:
 Run this application with your GitHub Access Token
 
 ```bash
-$ github-issue-cms --token="YOUR_GITHUB_TOKEN"
+$ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
 ```
 
 If your repository has issues and attached images, they will be exported like this tree.
@@ -98,7 +98,7 @@ jobs:
       run: go install github.com/rokuosan/github-issue-cms@latest
 
     - name: Generate
-      run: github-issue-cms --token=${{ secrets.GH_TOKEN }}
+      run: github-issue-cms generate --token=${{ secrets.GH_TOKEN }}
 
     - name: Auto Commit
       uses: stefanzweifel/git-auto-commit-action@v4
