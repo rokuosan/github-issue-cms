@@ -92,6 +92,8 @@ func IssueToArticle(issue *github.Issue) *Article {
 	// Remove front matter from content
 	if frontMatter != nil {
 		content = strings.Replace(content, frontMatter[0], "", 1)
+	} else {
+		frontMatter = []string{"", ""}
 	}
 
 	// Remove empty lines at the beginning
