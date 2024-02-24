@@ -158,8 +158,25 @@ func IssueToArticle(issue *github.Issue) *Article {
 }
 
 func ExportArticle(article *Article, id string) {
+	// Read params
+	articles := viper.GetString("hugo.directory.articles")
+	if articles == "" {
+		articles = "content/posts"
+	}
+	articles = strings.ReplaceAll(articles, ".", "")
+	if strings.HasPrefix(articles, "/") {
+		re := regexp.MustCompile("^/+")
+		match := re.FindString(articles)
+		articles = strings.Replace(articles, match, "", 1)
+	}
+	if strings.HasSuffix(articles, "/") {
+		re := regexp.MustCompile("/+$")
+		match := re.FindString(articles)
+		articles = strings.Replace(articles, match, "", 1)
+	}
+
 	// Create directory
-	path := filepath.Join("content", "posts")
+	path := filepath.Join(strings.Split(articles, "/")...)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0777); err != nil {
 			panic(err)
@@ -167,7 +184,7 @@ func ExportArticle(article *Article, id string) {
 	}
 
 	// Create file
-	path = filepath.Join("content", "posts", id+".md")
+	path = filepath.Join(path, id+".md")
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)

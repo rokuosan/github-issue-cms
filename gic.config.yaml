@@ -3,5 +3,7 @@ github:
   repository: 'github-issue-cms'
 
 hugo:
+  directory:
+    articles: 'content/posts'
   url:
     images: '/images'
