@@ -17,7 +17,7 @@ type Client struct {
 	token string
 }
 
-func GetClient(token string) *Client {
+func NewClient(token string) *Client {
 	slog.Debug("Setting up GitHub Client...")
 	if token == "" {
 		slog.Error("Failed to initialize GitHub Client due to the Token is empty.")
