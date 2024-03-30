@@ -56,28 +56,46 @@ func (c *Converter) GetIssues() []*github.Issue {
 		return nil
 	}
 
-	issuesAndPRs, _, err := client.Issues.ListByRepo(
-		context.Background(),
-		username,
-		repository,
-		&github.IssueListByRepoOptions{
-			State: "all",
-		})
-	if err != nil {
-		if strings.Contains(err.Error(), "401 Bad credentials") {
-			slog.Error("Invalid API Token; Please check your GitHub token.")
-			return nil
-		} else {
-			panic(err)
-		}
-	}
+	slog.Debug("Collecting Issues...")
 	var issues []*github.Issue
-	for _, item := range issuesAndPRs {
-		if item.IsPullRequest() {
-			continue
+	var rate github.Rate
+	nextPage := 1
+	for nextPage != 0 {
+		issuesAndPRs, resp, err := client.Issues.ListByRepo(
+			context.Background(),
+			username,
+			repository,
+			&github.IssueListByRepoOptions{
+				State: "closed",
+				ListOptions: github.ListOptions{
+					PerPage: 200,
+					Page:    nextPage,
+				},
+			})
+
+		if err != nil {
+			if strings.Contains(err.Error(), "401 Bad credentials") {
+				slog.Error("Invalid API Token; Please check your GitHub token.")
+				return nil
+			} else {
+				panic(err)
+			}
 		}
-		issues = append(issues, item)
+
+		var list []*github.Issue
+		for _, item := range issuesAndPRs {
+			if item.IsPullRequest() {
+				continue
+			}
+			list = append(list, item)
+		}
+		issues = append(issues, list...)
+
+		nextPage = resp.NextPage
+		rate = resp.Rate
 	}
+	slog.Debug("Get issues - " + strconv.Itoa(len(issues)))
+	slog.Debug(fmt.Sprintf("Remaining Rate Limit: %d/%d (Reset: %s)", rate.Remaining, rate.Limit, rate.Reset))
 
 	return issues
 }
@@ -103,17 +121,18 @@ func (c *Converter) downloadImage(url string, time string, number int) {
 		panic(err)
 	}
 	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			panic(err)
-		}
+		_ = file.Close()
 	}(file)
 
+	containsToken := true
+request:
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err)
 	}
-	req.Header.Set("Authorization", "token "+c.token)
+	if containsToken {
+		req.Header.Set("Authorization", "token "+c.token)
+	}
 	client := new(http.Client)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -128,10 +147,22 @@ func (c *Converter) downloadImage(url string, time string, number int) {
 
 	// Check response
 	contentType := resp.Header.Get("Content-Type")
+
 	if resp.StatusCode != 200 || contentType != "image/png" {
 		slog.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
 
-		// Remove the file
+		if resp.StatusCode == 400 && contentType == "application/xml" {
+			data, _ := io.ReadAll(resp.Body)
+			if strings.Contains(string(data), "Unsupported Authorization Type") {
+				if containsToken {
+					// Retry once
+					containsToken = false
+					goto request
+				}
+			}
+		}
+
+		_ = file.Close()
 		err := os.Remove(dest)
 		if err != nil {
 			panic(err)
