@@ -64,7 +64,12 @@ func (c *Converter) GetIssues() []*github.Issue {
 			State: "all",
 		})
 	if err != nil {
-		panic(err)
+		if strings.Contains(err.Error(), "401 Bad credentials") {
+			slog.Error("Invalid API Token; Please check your GitHub token.")
+			return nil
+		} else {
+			panic(err)
+		}
 	}
 	var issues []*github.Issue
 	for _, item := range issuesAndPRs {
