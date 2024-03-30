@@ -89,13 +89,21 @@ func (article *Article) ExportToMarkdown(name string) {
 		tags = append(tags, tag...)
 		tags = append(tags, '\n')
 	}
+	var category string
+	if article.Category != "" {
+		category = "  - " + article.Category
+	}
+	if strings.Contains(article.Title, "'") {
+		article.Title = strings.ReplaceAll(article.Title, "'", "''")
+	}
+
 	rawText := strings.TrimSpace(fmt.Sprintf(`---
-title: %s
+title: '%s'
 author: %s
 date: %s
 draft: %t
 categories: 
-  - %s
+%s
 tags:
 %s
 %s
@@ -107,7 +115,7 @@ tags:
 		article.Author,
 		article.Date,
 		article.Draft,
-		article.Category,
+		category,
 		tags,
 		article.ExtraFrontMatter,
 		article.Content))
