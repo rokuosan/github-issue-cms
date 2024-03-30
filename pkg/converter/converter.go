@@ -1,21 +1,159 @@
 package converter
 
 import (
+	"context"
 	"fmt"
 	"github.com/google/go-github/v56/github"
+	"github.com/spf13/viper"
+	"io"
 	"log/slog"
+	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 type Converter struct {
-	Client *Client
+	*github.Client
+	token string
 }
 
-func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
-	if issue.IsPullRequest() {
+type ImageDescriptor struct {
+	Url  string
+	Time string
+	Id   int
+}
+
+func NewConverter(token string) *Converter {
+	slog.Debug("Setting up GitHub Client...")
+	if token == "" {
+		slog.Error("Failed to initialize GitHub Client due to the Token is empty.")
 		return nil
+	}
+
+	client := github.NewClient(nil).WithAuthToken(token)
+	if client == nil {
+		slog.Error("Failed to initialize GitHub Client due to the Token is invalid.")
+		return nil
+	}
+	slog.Debug("Successfully created GitHub Client")
+	return &Converter{Client: client, token: token}
+}
+
+func (c *Converter) GetIssues() []*github.Issue {
+	username := viper.GetString("github.username")
+	repository := viper.GetString("github.repository")
+	if username == "" || repository == "" {
+		slog.Error("Please set github username and repository name in gic.config.yaml")
+		return nil
+	}
+
+	client := c.Client
+	if client == nil {
+		slog.Error("Client is nil")
+		return nil
+	}
+
+	issuesAndPRs, _, err := client.Issues.ListByRepo(
+		context.Background(),
+		username,
+		repository,
+		&github.IssueListByRepoOptions{
+			State: "all",
+		})
+	if err != nil {
+		panic(err)
+	}
+	var issues []*github.Issue
+	for _, item := range issuesAndPRs {
+		if item.IsPullRequest() {
+			continue
+		}
+		issues = append(issues, item)
+	}
+
+	return issues
+}
+
+func (c *Converter) downloadImage(url string, time string, number int) {
+	imageUrl := viper.GetString("hugo.url.images")
+	path := filepath.Join("./static", imageUrl)
+
+	base := filepath.Join(path, time)
+	dest := filepath.Join(base, strconv.Itoa(number)+".png")
+
+	// Create directory
+	if _, err := os.Stat(base); os.IsNotExist(err) {
+		err := os.MkdirAll(base, 0777)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	slog.Debug("Downloading: " + url)
+	file, err := os.Create(dest)
+	if err != nil {
+		panic(err)
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Authorization", "token "+c.token)
+	client := new(http.Client)
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(resp.Body)
+
+	// Check response
+	contentType := resp.Header.Get("Content-Type")
+	if resp.StatusCode != 200 || contentType != "image/png" {
+		slog.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
+
+		// Remove the file
+		err := os.Remove(dest)
+		if err != nil {
+			panic(err)
+		}
+
+		return
+	}
+	slog.Debug(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
+
+	// Write the body to file
+	written, err := io.Copy(file, resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	slog.Debug("Downloaded image: " + dest + " (" + fmt.Sprintf("%d", written) + " bytes)")
+}
+
+func (c *Converter) SaveImages(descriptors []*ImageDescriptor) {
+	for _, d := range descriptors {
+		c.downloadImage(d.Url, d.Time, d.Id)
+	}
+}
+
+// IssueToArticle converts an issue into article. Returns an Article object and array of ImageDescriptor.
+func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescriptor) {
+	if issue.IsPullRequest() {
+		return nil, nil
 	}
 	num := strconv.Itoa(issue.GetNumber())
 	slog.Debug("Converting #" + num + "...")
@@ -43,24 +181,27 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	content = strings.TrimLeft(content, "\n")
 
 	// Replace image URL of Markdown style
+	var imageDescriptors []*ImageDescriptor
+	offset := 0
 	time := issue.GetCreatedAt().Format("2006-01-02_150405")
 	re := regexp.MustCompile(`!\[image*]\((.*)\)`)
 	match := re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
 		replaced := "![" + m[1] + "](images/" + time + "/" + strconv.Itoa(i) + ".png)"
-		c.Client.downloadImage(m[1], time, i)
+		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[1], Time: time, Id: i})
+		slog.Debug("Found: (ID:" + strconv.Itoa(i) + ") " + time + " " + m[1])
 		content = strings.Replace(content, m[0], replaced, -1)
+		offset = i + 1
 	}
 
 	// Replace image URL of HTML style
 	re = regexp.MustCompile(`<img width="\d+" alt="(\w+)" src="(\S+)">`)
 	match = re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
-		replaced := "![" + m[1] + "](images/" + time + "/" + strconv.Itoa(i) + ".png)"
-
-		fmt.Println("Replace: " + m[2])
-		c.Client.downloadImage(m[2], time, i)
-
+		offset += i
+		replaced := "![" + m[1] + "](images/" + time + "/" + strconv.Itoa(offset) + ".png)"
+		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[2], Time: time, Id: offset})
+		slog.Debug("Found: " + strconv.Itoa(offset) + " " + time + " " + m[2])
 		content = strings.Replace(content, m[0], replaced, -1)
 	}
 
@@ -79,5 +220,6 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 		Content:          content,
 		ExtraFrontMatter: frontMatter[1],
 		Tags:             tags,
-	}
+		Key:              time,
+	}, imageDescriptors
 }
