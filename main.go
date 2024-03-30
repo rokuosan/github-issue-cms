@@ -2,17 +2,16 @@ package main
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/rokuosan/github-issue-cms/cmd"
-	"github.com/rokuosan/github-issue-cms/internal"
+	"log/slog"
+	"time"
 )
 
 func main() {
 	// Measure the time it takes to run the program
 	startTime := time.Now()
 	defer func() {
-		internal.Logger.Info(fmt.Sprintf("Finished in %f seconds\n", time.Since(startTime).Seconds()))
+		slog.Debug(fmt.Sprintf("Finished in %f seconds\n", time.Since(startTime).Seconds()))
 	}()
 
 	// Execute the root command

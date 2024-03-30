@@ -6,4 +6,5 @@ hugo:
   directory:
     articles: 'content/posts'
   url:
+    appendSlash: false
     images: '/images'
