@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/go-github/v56/github"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 	"io"
 	"log/slog"
 	"net/http"
@@ -204,10 +205,18 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 	frontMatter := func() []string {
 		re := regexp.MustCompile("(?s)^\\s*```\\n([^`]*)\\n```")
 		match := re.FindStringSubmatch(content)
-		if len(match) > 0 {
-			return match
+
+		if len(match) < 2 {
+			return nil
 		}
-		return nil
+		content := []byte(match[1])
+		t := make(map[interface{}]interface{})
+		err := yaml.Unmarshal(content, &t)
+		if err != nil {
+			return nil
+		}
+
+		return match
 	}()
 	if frontMatter != nil {
 		content = strings.Replace(content, frontMatter[0], "", 1)
@@ -216,6 +225,15 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 	}
 	content = strings.TrimLeft(content, "\n")
 
+	// Make image url
+	appendSlash := viper.GetBool("hugo.url.appendSlash")
+	imageUrl := func(alt string, key string, id int) string {
+		if appendSlash {
+			return "![" + alt + "](/images/" + key + "/" + strconv.Itoa(id) + ".png)"
+		}
+		return "![" + alt + "](images/" + key + "/" + strconv.Itoa(id) + ".png)"
+	}
+
 	// Replace image URL of Markdown style
 	var imageDescriptors []*ImageDescriptor
 	offset := 0
@@ -223,7 +241,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 	re := regexp.MustCompile(`!\[image*]\((.*)\)`)
 	match := re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
-		replaced := "![" + m[1] + "](images/" + time + "/" + strconv.Itoa(i) + ".png)"
+		replaced := imageUrl(m[1], time, i)
 		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[1], Time: time, Id: i})
 		slog.Debug("Found: (ID:" + strconv.Itoa(i) + ") " + time + " " + m[1])
 		content = strings.Replace(content, m[0], replaced, -1)
@@ -235,7 +253,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 	match = re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
 		offset += i
-		replaced := "![" + m[1] + "](images/" + time + "/" + strconv.Itoa(offset) + ".png)"
+		replaced := imageUrl(m[1], time, offset)
 		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[2], Time: time, Id: offset})
 		slog.Debug("Found: " + strconv.Itoa(offset) + " " + time + " " + m[2])
 		content = strings.Replace(content, m[0], replaced, -1)
