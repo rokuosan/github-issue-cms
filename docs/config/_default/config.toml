@@ -1,4 +1,4 @@
-baseURL = "https://example.com"
+baseURL = "https://rokuosan.github.io/github-issue-cms/"
 languageCode = "en"
 title = "GitHub Issue CMS"
 theme = "hugo-theme-monochrome"
