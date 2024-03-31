@@ -1,0 +1,4 @@
+---
+title: 'コンフィグ'
+type: 'bookcase'
+---
