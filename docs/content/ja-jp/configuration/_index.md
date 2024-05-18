@@ -1,4 +1,0 @@
----
-title: 'コンフィグ'
-type: 'bookcase'
----
