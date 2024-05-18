@@ -1,0 +1,11 @@
+version: '3'
+
+tasks:
+  up:
+    cmds:
+      - "cd docs && hugo server --buildDrafts --disableFastRender"
+    silent: true
+  update:
+    cmds:
+      - "hugo mod get -u"
+    silent: true

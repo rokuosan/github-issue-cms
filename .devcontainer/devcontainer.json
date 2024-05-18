@@ -1,0 +1,25 @@
+{
+    "name": "Debian",
+    "image": "mcr.microsoft.com/devcontainers/base:bullseye",
+    "features": {
+        "ghcr.io/devcontainers/features/go:1": {
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/hugo:1": {
+            "extended": true,
+            "version": "latest"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "tamasfe.even-better-toml",
+                "golang.go"
+            ]
+        }
+    },
+    "forwardPorts": [
+        1313
+    ],
+    "postCreateCommand": "sh +x .devcontainer/install_tools.sh"
+}
