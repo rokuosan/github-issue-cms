@@ -1,0 +1,101 @@
+baseURL = 'https://rokuosan.github.io/github-issue-cms'
+languageCode = 'ja-JP'
+title = 'GitHub Issue CMS'
+
+# enableGitInfo = true
+enableRobotsTXT = true
+hasCJKLanguage = true
+
+enableInlineShortcodes = true
+
+defaultContentLanguage = "ja"
+[languages]
+    [languages.en]
+        languageName = "English"
+        title = "GitHub Issue CMS"
+        weight = 2
+    [languages.ja]
+        languageName = "日本語"
+        title = "GitHub Issue CMS"
+        weight = 1
+
+
+[outputs]
+    home = ["HTML"]
+    section = ["HTML", "RSS"]
+    # taxonomy = ["HTML"]
+    # term = ["HTML"]
+    page = ["HTML"]
+
+[module]
+    [[module.imports]]
+        path = "github.com/imfing/hextra"
+
+[markup]
+    [markup.goldmark]
+        [markup.goldmark.renderer]
+            unsafe = true
+    [markup.highlight]
+        noClasses = false
+
+[menu]
+    # [[menu.main]]
+    #     name = "Documentation"
+    #     weight = 1
+    #     pageRef = "docs/"
+
+    [[menu.main]]
+        name = "Search"
+        params.type = "search"
+        weight = 2
+
+    [[menu.main]]
+        name = "GitHub"
+        weight = 3
+        url = "https://github.com/rokuosan/github-issue-cms/"
+        params.icon = "github"
+
+[[menu.sidebar]]
+    name = "Resources"
+    params.type = "separator"
+    weight = 1
+
+[[menu.sidebar]]
+    name = "Releases ↗"
+    url = "https://github.com/rokuosan/github-issue-cms/releases"
+    weight = 2
+
+
+[params]
+    displayUpdatedDate = true
+    dateFormat = "January 2, 2006"
+
+[params.navbar]
+    displayTitle = true
+    displayLogo = false
+#     [params.navbar.logo]
+#         path = "images/logo.png"
+#         dark = "images/logo-dark.svg"
+#         link = "/"
+#         width = 40
+#         height = 20
+
+[params.page]
+    width = "normal"
+
+[params.footer]
+    enable = true
+    displayCopyright = true
+    displayPoweredBy = false
+    width = "normal"
+
+[params.search]
+    enable = true
+    type = "flexsearch"
+    [params.search.flexsearch]
+        index = "content"
+        tokenize = "forward"
+
+[params.editURL]
+    enable = true
+    base = "https://example.com/"
