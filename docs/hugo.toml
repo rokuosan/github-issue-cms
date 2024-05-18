@@ -98,4 +98,4 @@ defaultContentLanguage = "ja"
 
 [params.editURL]
     enable = true
-    base = "https://example.com/"
+    base = "https://github.com/rokuosan/github-issue-cms/edit/main/docs/content"
