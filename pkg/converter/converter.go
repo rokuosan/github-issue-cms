@@ -3,9 +3,6 @@ package converter
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-github/v56/github"
-	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,6 +11,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/google/go-github/v56/github"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type Converter struct {
@@ -67,7 +68,6 @@ func (c *Converter) GetIssues() []*github.Issue {
 			username,
 			repository,
 			&github.IssueListByRepoOptions{
-				State: "closed",
 				ListOptions: github.ListOptions{
 					PerPage: 200,
 					Page:    nextPage,
@@ -270,7 +270,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 		Title:            issue.GetTitle(),
 		Date:             issue.GetCreatedAt().Format("2006-01-02T15:04:05Z"),
 		Category:         issue.GetMilestone().GetTitle(),
-		Draft:            issue.GetState() != "closed",
+		Draft:            issue.GetState() == "open",
 		Content:          content,
 		ExtraFrontMatter: frontMatter[1],
 		Tags:             tags,
