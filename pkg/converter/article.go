@@ -3,11 +3,12 @@ package converter
 import (
 	"bufio"
 	"fmt"
-	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
 // Article is the article for Hugo.
@@ -102,7 +103,7 @@ title: '%s'
 author: %s
 date: %s
 draft: %t
-categories: 
+categories:
 %s
 tags:
 %s

@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/rokuosan/github-issue-cms/pkg/converter"
 	"log/slog"
 	"strconv"
+
+	"github.com/rokuosan/github-issue-cms/pkg/converter"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

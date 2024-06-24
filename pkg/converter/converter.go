@@ -68,6 +68,7 @@ func (c *Converter) GetIssues() []*github.Issue {
 			username,
 			repository,
 			&github.IssueListByRepoOptions{
+				State: "all",
 				ListOptions: github.ListOptions{
 					PerPage: 200,
 					Page:    nextPage,
