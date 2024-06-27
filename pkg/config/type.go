@@ -1,5 +1,10 @@
 package config
 
+import (
+	"slices"
+	"strings"
+)
+
 type Config struct {
 	GitHub *GitHubConfig `yaml:"github"`
 	Hugo   *HugoConfig   `yaml:"hugo"`
@@ -11,6 +16,7 @@ type GitHubConfig struct {
 }
 
 type HugoConfig struct {
+	Bundle    string               `yaml:"bundle"`
 	Direcotry *HugoDirectoryConfig `yaml:"directory"`
 	Url       *HugoURLConfig       `yaml:"url"`
 }
@@ -24,6 +30,15 @@ type HugoURLConfig struct {
 	Images      string `yaml:"images"`
 }
 
-func (g *GitHubConfig) RepositoryURL() string {
-	return "https://github.com/" + g.Username + "/" + g.Repository
+func (c *GitHubConfig) RepositoryURL() string {
+	return "https://github.com/" + c.Username + "/" + c.Repository
+}
+
+func (c *HugoConfig) IsValidBundleType() bool {
+	allowType := []string{
+		"none",
+		"leaf",
+	}
+
+	return slices.Contains(allowType, strings.ToLower(c.Bundle))
 }

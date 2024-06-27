@@ -27,6 +27,17 @@ func load() {
 	if err := viper.Unmarshal(&config); err != nil {
 		panic(err)
 	}
+
+	// Validate configuration
+	conditions := []bool{
+		config.Hugo.IsValidBundleType(),
+	}
+
+	for _, c := range conditions {
+		if !c {
+			panic("Invalid configuration")
+		}
+	}
 }
 
 // Generate generates a configuration file.
