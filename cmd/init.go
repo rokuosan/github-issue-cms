@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -10,14 +11,17 @@ var initCmd = &cobra.Command{
 	Short: "Generate config file.",
 	Long:  `Generate config file named "gic.config.yaml" in the current directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		username := cmd.Flag("username").Value.String()
-		repository := cmd.Flag("repository").Value.String()
+		config.Generate()
+		config.Get()
 
-		viper.Set("github.username", username)
-		viper.Set("github.repository", repository)
+		if username := cmd.Flag("username").Value.String(); username != "<YOUR_USERNAME>" {
+			viper.Set("github.username", username)
+		}
+		if repository := cmd.Flag("repository").Value.String(); repository != "<YOUR_REPOSITORY>" {
+			viper.Set("github.repository", repository)
+		}
 
-		err := viper.WriteConfigAs("gic.config.yaml")
-		if err != nil {
+		if err := viper.WriteConfig(); err != nil {
 			panic(err)
 		}
 	},

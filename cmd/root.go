@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var debug bool
@@ -28,15 +27,6 @@ func Execute() {
 }
 
 func init() {
-	// Read config file
-	viper.SetConfigName("gic.config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
-
 	// Debug
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Debug mode")
 }
