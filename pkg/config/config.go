@@ -28,16 +28,7 @@ func load() {
 		panic(err)
 	}
 
-	// Validate configuration
-	conditions := []bool{
-		config.Hugo.IsValidBundleType(),
-	}
-
-	for _, c := range conditions {
-		if !c {
-			panic("Invalid configuration")
-		}
-	}
+	validate()
 }
 
 // Generate generates a configuration file.
