@@ -41,12 +41,13 @@ func Generate() {
 			Repository: "<YOUR_REPOSITORY>",
 		},
 		Hugo: &HugoConfig{
-			Direcotry: &HugoDirectoryConfig{
+			Bundle: "none",
+			Directory: &HugoDirectoryConfig{
 				Articles: "content/posts",
+				Images:   "static/images",
 			},
 			Url: &HugoURLConfig{
-				AppendSlash: false,
-				Images:      "/images",
+				Images: "/images",
 			},
 		},
 	}
