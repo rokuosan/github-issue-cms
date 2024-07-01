@@ -1,5 +1,8 @@
 package config
 
+// Config package is a package for configuration.
+// If you change the configuration, you also need to change ``config.Generate()`` (config.go).
+
 type Config struct {
 	GitHub *GitHubConfig `yaml:"github"`
 	Hugo   *HugoConfig   `yaml:"hugo"`
@@ -12,16 +15,17 @@ type GitHubConfig struct {
 
 type HugoConfig struct {
 	Bundle    string               `yaml:"bundle"`
-	Direcotry *HugoDirectoryConfig `yaml:"directory"`
+	Directory *HugoDirectoryConfig `yaml:"directory"`
 	Url       *HugoURLConfig       `yaml:"url"`
 }
 
 type HugoDirectoryConfig struct {
 	Articles string `yaml:"articles"`
+	Images   string `yaml:"images"`
 }
 
 type HugoURLConfig struct {
-	AppendSlash bool   `yaml:"appendSlash"`
+	AppendSlash bool   `yaml:"appendSlash,omitempty"`
 	Images      string `yaml:"images"`
 }
 

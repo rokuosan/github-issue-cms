@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/rokuosan/github-issue-cms/cmd"
 	"log/slog"
 	"time"
+
+	"github.com/rokuosan/github-issue-cms/cmd"
 )
 
 func main() {

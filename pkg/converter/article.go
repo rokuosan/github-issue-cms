@@ -44,7 +44,7 @@ type Article struct {
 
 func (article *Article) ExportToMarkdown(name string) {
 	// Get export directory
-	articlesDir := config.Get().Hugo.Direcotry.Articles
+	articlesDir := config.Get().Hugo.Directory.Articles
 	if articlesDir == "" {
 		articlesDir = "content/posts"
 	}

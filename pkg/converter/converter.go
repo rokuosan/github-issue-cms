@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v56/github"
+	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
@@ -103,8 +104,8 @@ func (c *Converter) GetIssues() []*github.Issue {
 }
 
 func (c *Converter) downloadImage(url string, time string, number int) {
-	imageUrl := viper.GetString("hugo.url.images")
-	path := filepath.Join("./static", imageUrl)
+	imageDirectory := config.Get().Hugo.Directory.Images
+	path := filepath.Clean(imageDirectory)
 
 	base := filepath.Join(path, time)
 	dest := filepath.Join(base, strconv.Itoa(number)+".png")
@@ -227,12 +228,11 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 	content = strings.TrimLeft(content, "\n")
 
 	// Make image url
-	appendSlash := viper.GetBool("hugo.url.appendSlash")
+	imageUrlPath := config.Get().Hugo.Url.Images
 	imageUrl := func(alt string, key string, id int) string {
-		if appendSlash {
-			return "![" + alt + "](/images/" + key + "/" + strconv.Itoa(id) + ".png)"
-		}
-		return "![" + alt + "](images/" + key + "/" + strconv.Itoa(id) + ".png)"
+		path := filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
+		path = filepath.Clean(path)
+		return "![" + alt + "](" + path + ")"
 	}
 
 	// Replace image URL of Markdown style
