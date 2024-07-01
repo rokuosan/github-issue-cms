@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"strconv"
 
+	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/rokuosan/github-issue-cms/pkg/converter"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var githubToken string
@@ -20,13 +20,14 @@ var generateCmd = &cobra.Command{
 This command will get issues from GitHub and create articles from them.
 The articles will be saved in the "content" directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		username := viper.GetString("github.username")
-		repository := viper.GetString("github.repository")
+		config := config.Get()
+		username := config.GitHub.Username
+		repository := config.GitHub.Repository
 		if username == "" || repository == "" {
 			slog.Error("Please set username and repository in gic.config.yaml")
 			return
 		}
-		url := "https://github.com/" + username + "/" + repository
+		url := config.GitHub.RepositoryURL()
 		slog.Info("Target Repository: " + url)
 
 		// Create articles

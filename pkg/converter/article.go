@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/viper"
+	"github.com/rokuosan/github-issue-cms/pkg/config"
 )
 
 // Article is the article for Hugo.
@@ -44,7 +44,7 @@ type Article struct {
 
 func (article *Article) ExportToMarkdown(name string) {
 	// Get export directory
-	articlesDir := viper.GetString("hugo.directory.articles")
+	articlesDir := config.Get().Hugo.Direcotry.Articles
 	if articlesDir == "" {
 		articlesDir = "content/posts"
 	}

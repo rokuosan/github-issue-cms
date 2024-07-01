@@ -1,11 +1,27 @@
 version: '3'
 
+silent: true
+
 tasks:
-  up:
+  default:
     cmds:
-      - "cd docs && hugo server --buildDrafts --disableFastRender"
-    silent: true
+      - "task -a"
+
   update:
+    desc: "Update module dependencies."
+    silent: false
+    cmds:
+      - "go get -u"
+      - "go mod tidy"
+
+  hugo:up:
+    desc: "Start document server with hugo."
+    dir: '{{.USER_WORKING_DIR}}/docs'
+    cmds:
+      - "hugo server --buildDrafts --disableFastRender"
+
+  hugo:update:
+    desc: "Update hugo modules."
+    dir: '{{.USER_WORKING_DIR}}/docs'
     cmds:
       - "hugo mod get -u"
-    silent: true
