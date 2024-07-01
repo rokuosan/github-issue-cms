@@ -3,8 +3,9 @@ github:
   repository: 'github-issue-cms'
 
 hugo:
+  bundle: none
   directory:
     articles: 'content/posts'
+    images: 'public/static/images'
   url:
-    appendSlash: false
     images: '/images'
