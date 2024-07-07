@@ -28,7 +28,7 @@ func load() {
 		panic(err)
 	}
 
-	validate()
+	config.validate()
 }
 
 // Generate generates a configuration file.
