@@ -106,6 +106,6 @@ jobs:
         commit_message: "ci: :memo: Add new articles"
 ```
 
-Congratulation.
+Congratulations.
 
 Your Hugo site will automatically deployed when a Issue is closed or reopened.
