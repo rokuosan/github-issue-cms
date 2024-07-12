@@ -29,6 +29,7 @@ func (c *HugoConfig) IsValidBundleType() bool {
 	allowType := []string{
 		"none",
 		"leaf",
+		"branch",
 	}
 
 	return slices.Contains(allowType, strings.ToLower(c.Bundle))

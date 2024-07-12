@@ -47,18 +47,14 @@ type Article struct {
 	Images []*ImageDescriptor `yaml:"-"`
 }
 
-type exportHandler interface {
-	Export(article *Article)
-}
-
 func (self *Article) Export() {
 	mode := config.Get().Hugo.Bundle
 
-	if handler := map[string]exportHandler{
-		"none":   &normalExportHandler{},
-		"bundle": &bundleExportHandler{},
+	if handler := map[string]func(*Article){
+		"none": noneBundleExport,
+		"leaf": leafBundleExport,
 	}[mode]; handler != nil {
-		handler.Export(self)
+		handler(self)
 		return
 	}
 
@@ -150,9 +146,7 @@ func (self *Article) Transform() (string, error) {
 	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), self.Content), nil
 }
 
-type normalExportHandler struct{}
-
-func (h *normalExportHandler) Export(article *Article) {
+func noneBundleExport(article *Article) {
 	dest := config.Get().Hugo.Directory.Articles
 	if dest == "" {
 		slog.Error("Hugo directory is not set")
@@ -185,9 +179,7 @@ func (h *normalExportHandler) Export(article *Article) {
 	}
 }
 
-type bundleExportHandler struct{}
-
-func (h *bundleExportHandler) Export(article *Article) {
+func leafBundleExport(article *Article) {
 	dest := config.Get().Hugo.Directory.Articles
 	if dest == "" {
 		slog.Error("Hugo directory is not set")
