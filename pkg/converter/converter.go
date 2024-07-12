@@ -228,9 +228,15 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	content = strings.TrimLeft(content, "\n")
 
 	// Make image url
+	isBundleMode := config.Get().Hugo.Bundle != "none"
 	imageUrlPath := config.Get().Hugo.Url.Images
 	imageUrl := func(alt string, key string, id int) string {
-		path := filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
+		var path string
+		if isBundleMode {
+			path = filepath.Join(strconv.Itoa(id) + ".png")
+		} else {
+			path = filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
+		}
 		path = filepath.Clean(path)
 		return "![" + alt + "](" + path + ")"
 	}
