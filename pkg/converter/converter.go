@@ -190,9 +190,9 @@ func (c *Converter) SaveImages(descriptors []*ImageDescriptor) {
 }
 
 // IssueToArticle converts an issue into article. Returns an Article object and array of ImageDescriptor.
-func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescriptor) {
+func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	if issue.IsPullRequest() {
-		return nil, nil
+		return nil
 	}
 	num := strconv.Itoa(issue.GetNumber())
 	slog.Debug("Converting #" + num + "...")
@@ -276,5 +276,6 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 		ExtraFrontMatter: frontMatter[1],
 		Tags:             tags,
 		Key:              time,
-	}, imageDescriptors
+		Images:           imageDescriptors,
+	}
 }

@@ -8,6 +8,7 @@ import (
 )
 
 var config Config
+var GitHubToken string
 
 // viperInitialize initializes viper.
 func viperInitialize() {

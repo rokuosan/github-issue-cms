@@ -36,9 +36,8 @@ The articles will be saved in the "content" directory.`,
 		slog.Info("Found Issues: " + strconv.Itoa(len(issues)))
 		slog.Info("Converting articles...")
 		for _, issue := range issues {
-			article, images := c.IssueToArticle(issue)
-			article.ExportToMarkdown(article.Key)
-			c.SaveImages(images)
+			article := c.IssueToArticle(issue)
+			article.Export()
 		}
 
 		slog.Info("Complete")
@@ -49,7 +48,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	// GitHub Token
-	generateCmd.Flags().StringVarP(&githubToken, "token", "t", "", "GitHub API Token")
+	generateCmd.Flags().StringVarP(&config.GitHubToken, "token", "t", "", "GitHub API Token")
 	_ = generateCmd.MarkFlagRequired("token")
 
 }
