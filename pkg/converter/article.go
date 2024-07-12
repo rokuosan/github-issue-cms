@@ -3,74 +3,75 @@ package converter
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
+	"gopkg.in/yaml.v3"
 )
 
 // Article is the article for Hugo.
 type Article struct {
 	// Author is the author of the article.
-	Author string `json:"author"`
+	Author string `yaml:"author"`
 
 	// Title is the title of the article.
-	Title string `json:"title"`
+	Title string `yaml:"title"`
 
 	// Content is the content of the article.
-	Content string `json:"content"`
+	Content string `yaml:"-"`
 
 	// Date is the date of the article.
-	Date string `json:"date"`
+	Date string `yaml:"date"`
 
 	// Category is the category of the article.
-	Category string `json:"category"`
+	Category string `yaml:"categories"`
 
 	// Tags is the tags of the article.
-	Tags []string `json:"tags"`
+	Tags []string `yaml:"tags"`
 
 	// Draft is the draft of the article.
 	// If it is true, the article will not be published.
-	Draft bool `json:"draft"`
+	Draft bool `yaml:"draft"`
 
 	// ExtraFrontMatter is the extra front matter of the article.
 	// It must be a valid YAML string.
-	ExtraFrontMatter string `json:"extra_front_matter"`
+	ExtraFrontMatter string `yaml:"-"`
 
-	Key string
+	Key string `yaml:"-"`
+
+	// Images is the images of the article.
+	Images []*ImageDescriptor `yaml:"-"`
 }
 
-func (article *Article) ExportToMarkdown(name string) {
-	// Get export directory
-	articlesDir := config.Get().Hugo.Directory.Articles
-	if articlesDir == "" {
-		articlesDir = "content/posts"
-	}
-	// Sanitize
-	articlesDir = strings.ReplaceAll(articlesDir, ".", "")
-	if strings.HasPrefix(articlesDir, "/") {
-		re := regexp.MustCompile("^/+")
-		match := re.FindString(articlesDir)
-		articlesDir = strings.Replace(articlesDir, match, "", 1)
-	}
-	if strings.HasSuffix(articlesDir, "/") {
-		re := regexp.MustCompile("/+$")
-		match := re.FindString(articlesDir)
-		articlesDir = strings.Replace(articlesDir, match, "", 1)
+func (self *Article) Export() {
+	mode := config.Get().Hugo.Bundle
+
+	if handler := map[string]func(*Article){
+		"none": noneBundleExport,
+		"leaf": leafBundleExport,
+	}[mode]; handler != nil {
+		handler(self)
+		return
 	}
 
-	// Create directory
-	path := filepath.Join(strings.Split(articlesDir, "/")...)
+	slog.Error(fmt.Sprintf("Invalid export mode: %s", mode))
+}
+
+func createDirectoryIfNotExist(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0777); err != nil {
-			panic(err)
+			return err
 		}
 	}
+	return nil
+}
 
+func createFileAndWrite(path string, content string) error {
 	// Create file
-	path = filepath.Join(path, name+".md")
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)
@@ -82,48 +83,199 @@ func (article *Article) ExportToMarkdown(name string) {
 		}
 	}(file)
 
-	// Build String
-	var content []byte
-	var tags []byte
-	for _, tag := range article.Tags {
-		tags = append(tags, "  - "...)
-		tags = append(tags, tag...)
-		tags = append(tags, '\n')
-	}
-	var category string
-	if article.Category != "" {
-		category = "  - " + article.Category
-	}
-	if strings.Contains(article.Title, "'") {
-		article.Title = strings.ReplaceAll(article.Title, "'", "''")
-	}
-
-	rawText := strings.TrimSpace(fmt.Sprintf(`---
-title: '%s'
-author: %s
-date: %s
-draft: %t
-categories:
-%s
-tags:
-%s
-%s
----
-
-%s
-`,
-		article.Title,
-		article.Author,
-		article.Date,
-		article.Draft,
-		category,
-		tags,
-		article.ExtraFrontMatter,
-		article.Content))
-	content = append(content, rawText...)
-
 	// Write
 	writer := bufio.NewWriter(file)
-	_, _ = writer.Write(content)
-	_ = writer.Flush()
+	_, err = writer.Write([]byte(content))
+	if err != nil {
+		return err
+	}
+	err = writer.Flush()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Transform transforms the article to the markdown format.
+func (self *Article) Transform() (string, error) {
+	extra := make(map[string]interface{})
+	err := yaml.Unmarshal([]byte(self.ExtraFrontMatter), &extra)
+	if err != nil {
+		return "", err
+	}
+
+	// Overwrite self if extra has the same key
+	// and delete the key from extra
+	if author, ok := extra["author"]; ok {
+		self.Author = author.(string)
+		delete(extra, "author")
+	}
+	if title, ok := extra["title"]; ok {
+		self.Title = title.(string)
+		delete(extra, "title")
+	}
+	if date, ok := extra["date"]; ok {
+		self.Date = date.(string)
+		delete(extra, "date")
+	}
+	if categories, ok := extra["categories"]; ok {
+		self.Category = categories.(string)
+		delete(extra, "categories")
+	}
+	if tags, ok := extra["tags"]; ok {
+		self.Tags = tags.([]string)
+		delete(extra, "tags")
+	}
+	if draft, ok := extra["draft"]; ok {
+		self.Draft = draft.(bool)
+		delete(extra, "draft")
+	}
+
+	extraFrontMatter, err := yaml.Marshal(extra)
+	if err != nil {
+		return "", err
+	}
+
+	partial, err := yaml.Marshal(self)
+	if err != nil {
+		panic(err)
+	}
+	frontmatter := string(partial)
+	frontmatter += string(extraFrontMatter)
+
+	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), self.Content), nil
+}
+
+func noneBundleExport(article *Article) {
+	dest := config.Get().Hugo.Directory.Articles
+	if dest == "" {
+		slog.Error("Hugo directory is not set")
+		return
+	}
+	dest = filepath.Clean(dest)
+
+	// Prepare directory
+	if err := createDirectoryIfNotExist(dest); err != nil {
+		slog.Error(fmt.Sprintf("Failed to create directory: %s", dest))
+		return
+	}
+
+	// Build String
+	text, err := article.Transform()
+	if err != nil {
+		panic(err)
+	}
+
+	// Write
+	path := filepath.Join(dest, article.Key+".md")
+	if err := createFileAndWrite(path, text); err != nil {
+		slog.Error(fmt.Sprintf("Failed to write file: %s", path))
+		return
+	}
+
+	// Save images
+	for _, image := range article.Images {
+		image.Save(filepath.Join(config.Get().Hugo.Directory.Images, article.Key))
+	}
+}
+
+func leafBundleExport(article *Article) {
+	dest := config.Get().Hugo.Directory.Articles
+	if dest == "" {
+		slog.Error("Hugo directory is not set")
+		return
+	}
+	dest = filepath.Clean(dest)
+
+	// Prepare directory
+	path := filepath.Join(dest, article.Key)
+	if err := createDirectoryIfNotExist(path); err != nil {
+		slog.Error(fmt.Sprintf("Failed to create directory: %s", path))
+		return
+	}
+
+	// Build String
+	text, err := article.Transform()
+	if err != nil {
+		panic(err)
+	}
+
+	// Write
+	path = filepath.Join(path, "index.md")
+	if err := createFileAndWrite(path, text); err != nil {
+		slog.Error(fmt.Sprintf("Failed to write file: %s", path))
+		return
+	}
+
+	// Save images
+	for _, image := range article.Images {
+		image.Save(filepath.Join(config.Get().Hugo.Directory.Articles, article.Key))
+	}
+}
+
+// Download downloads the image.
+// Expected path is "path/to/image/".
+func (self *ImageDescriptor) Save(path string) {
+	// Download image
+	sendRequest := func(includeToken bool) io.ReadCloser {
+		req, err := http.NewRequest("GET", self.Url, nil)
+		if err != nil {
+			panic(err)
+		}
+		if includeToken {
+			req.Header.Set("Authorization", "token "+config.GitHubToken)
+		}
+		client := new(http.Client)
+		resp, err := client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+
+		// Check response
+		contentType := resp.Header.Get("Content-Type")
+		if resp.StatusCode != 200 || contentType != "image/png" {
+			slog.Error(fmt.Sprintf("Bad Response: %+v", resp))
+			_, _ = io.ReadAll(resp.Body)
+			return nil
+		}
+
+		return resp.Body
+	}
+
+	// Send request
+	containsToken := config.GitHubToken != ""
+	body := sendRequest(containsToken)
+	if body == nil {
+		body = sendRequest(!containsToken)
+	}
+	defer func(body io.ReadCloser) {
+		_ = body.Close()
+	}(body)
+
+	if body == nil {
+		slog.Error(fmt.Sprintf("Failed to download image: %s", self.Url))
+		return
+	}
+
+	// Create directory
+	if err := createDirectoryIfNotExist(path); err != nil {
+		slog.Error(fmt.Sprintf("Failed to create directory: %s", path))
+		return
+	}
+
+	// Write
+	path = filepath.Join(path, fmt.Sprintf("%d.png", self.Id))
+	file, err := os.Create(path)
+	if err != nil {
+		panic(err)
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+
+	written, err := io.Copy(file, body)
+	if err != nil {
+		panic(err)
+	}
+	slog.Debug(fmt.Sprintf("Downloaded: %s (%d bytes)", path, written))
 }

@@ -29,20 +29,20 @@ type ImageDescriptor struct {
 	Id   int
 }
 
-func NewConverter(token string) *Converter {
+func NewConverter() *Converter {
 	slog.Debug("Setting up GitHub Client...")
-	if token == "" {
+	if config.GitHubToken == "" {
 		slog.Error("Failed to initialize GitHub Client due to the Token is empty.")
 		return nil
 	}
 
-	client := github.NewClient(nil).WithAuthToken(token)
+	client := github.NewClient(nil).WithAuthToken(config.GitHubToken)
 	if client == nil {
 		slog.Error("Failed to initialize GitHub Client due to the Token is invalid.")
 		return nil
 	}
 	slog.Debug("Successfully created GitHub Client")
-	return &Converter{Client: client, token: token}
+	return &Converter{Client: client, token: config.GitHubToken}
 }
 
 func (c *Converter) GetIssues() []*github.Issue {
@@ -190,9 +190,9 @@ func (c *Converter) SaveImages(descriptors []*ImageDescriptor) {
 }
 
 // IssueToArticle converts an issue into article. Returns an Article object and array of ImageDescriptor.
-func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescriptor) {
+func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	if issue.IsPullRequest() {
-		return nil, nil
+		return nil
 	}
 	num := strconv.Itoa(issue.GetNumber())
 	slog.Debug("Converting #" + num + "...")
@@ -228,9 +228,15 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 	content = strings.TrimLeft(content, "\n")
 
 	// Make image url
+	isBundleMode := config.Get().Hugo.Bundle != "none"
 	imageUrlPath := config.Get().Hugo.Url.Images
 	imageUrl := func(alt string, key string, id int) string {
-		path := filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
+		var path string
+		if isBundleMode {
+			path = filepath.Join(strconv.Itoa(id) + ".png")
+		} else {
+			path = filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
+		}
 		path = filepath.Clean(path)
 		return "![" + alt + "](" + path + ")"
 	}
@@ -276,5 +282,6 @@ func (c *Converter) IssueToArticle(issue *github.Issue) (*Article, []*ImageDescr
 		ExtraFrontMatter: frontMatter[1],
 		Tags:             tags,
 		Key:              time,
-	}, imageDescriptors
+		Images:           imageDescriptors,
+	}
 }

@@ -8,6 +8,7 @@ import (
 )
 
 var config Config
+var GitHubToken string
 
 // viperInitialize initializes viper.
 func viperInitialize() {
@@ -28,7 +29,7 @@ func load() {
 		panic(err)
 	}
 
-	validate()
+	config.validate()
 }
 
 // Generate generates a configuration file.

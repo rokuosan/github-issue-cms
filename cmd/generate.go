@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var githubToken string
-
 var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate articles from GitHub issues",
@@ -31,14 +29,13 @@ The articles will be saved in the "content" directory.`,
 		slog.Info("Target Repository: " + url)
 
 		// Create articles
-		c := converter.NewConverter(githubToken)
+		c := converter.NewConverter()
 		issues := c.GetIssues()
 		slog.Info("Found Issues: " + strconv.Itoa(len(issues)))
 		slog.Info("Converting articles...")
 		for _, issue := range issues {
-			article, images := c.IssueToArticle(issue)
-			article.ExportToMarkdown(article.Key)
-			c.SaveImages(images)
+			article := c.IssueToArticle(issue)
+			article.Export()
 		}
 
 		slog.Info("Complete")
@@ -49,7 +46,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	// GitHub Token
-	generateCmd.Flags().StringVarP(&githubToken, "token", "t", "", "GitHub API Token")
+	generateCmd.Flags().StringVarP(&config.GitHubToken, "token", "t", "", "GitHub API Token")
 	_ = generateCmd.MarkFlagRequired("token")
 
 }

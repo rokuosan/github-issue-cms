@@ -6,6 +6,6 @@ hugo:
   bundle: none
   directory:
     articles: 'content/posts'
-    images: 'public/static/images'
+    images: 'static/images'
   url:
     images: '/images'
