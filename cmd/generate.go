@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var githubToken string
-
 var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate articles from GitHub issues",
@@ -31,7 +29,7 @@ The articles will be saved in the "content" directory.`,
 		slog.Info("Target Repository: " + url)
 
 		// Create articles
-		c := converter.NewConverter(githubToken)
+		c := converter.NewConverter()
 		issues := c.GetIssues()
 		slog.Info("Found Issues: " + strconv.Itoa(len(issues)))
 		slog.Info("Converting articles...")

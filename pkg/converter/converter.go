@@ -29,20 +29,20 @@ type ImageDescriptor struct {
 	Id   int
 }
 
-func NewConverter(token string) *Converter {
+func NewConverter() *Converter {
 	slog.Debug("Setting up GitHub Client...")
-	if token == "" {
+	if config.GitHubToken == "" {
 		slog.Error("Failed to initialize GitHub Client due to the Token is empty.")
 		return nil
 	}
 
-	client := github.NewClient(nil).WithAuthToken(token)
+	client := github.NewClient(nil).WithAuthToken(config.GitHubToken)
 	if client == nil {
 		slog.Error("Failed to initialize GitHub Client due to the Token is invalid.")
 		return nil
 	}
 	slog.Debug("Successfully created GitHub Client")
-	return &Converter{Client: client, token: token}
+	return &Converter{Client: client, token: config.GitHubToken}
 }
 
 func (c *Converter) GetIssues() []*github.Issue {
