@@ -238,12 +238,6 @@ func (self *ImageDescriptor) Save(path string) {
 		if err != nil {
 			panic(err)
 		}
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				panic(err)
-			}
-		}(resp.Body)
 
 		// Check response
 		contentType := resp.Header.Get("Content-Type")
@@ -262,6 +256,10 @@ func (self *ImageDescriptor) Save(path string) {
 	if body == nil {
 		body = sendRequest(!containsToken)
 	}
+	defer func(body io.ReadCloser) {
+		_ = body.Close()
+	}(body)
+
 	if body == nil {
 		slog.Error(fmt.Sprintf("Failed to download image: %s", self.Url))
 		return
