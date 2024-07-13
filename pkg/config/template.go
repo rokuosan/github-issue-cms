@@ -12,7 +12,7 @@ import (
 // %H - Hour (24-hour clock) as a decimal number [00,23].
 // %M - Minute as a decimal number [00,59].
 // %S - Second as a decimal number [00,59].
-func compile(datetime time.Time, template string) string {
+func CompileTimeTemplate(datetime time.Time, template string) string {
 	now := datetime
 
 	year := now.Format("2006")

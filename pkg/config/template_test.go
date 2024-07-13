@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func Test_compile(t *testing.T) {
+func Test_CompileTimeTemplate(t *testing.T) {
 	type args struct {
 		datetime time.Time
 		template string
@@ -34,7 +34,7 @@ func Test_compile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := compile(tt.args.datetime, tt.args.template); got != tt.want {
+			if got := CompileTimeTemplate(tt.args.datetime, tt.args.template); got != tt.want {
 				t.Errorf("compile() = %v, want %v", got, tt.want)
 			}
 		})
