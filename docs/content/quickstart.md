@@ -16,6 +16,8 @@ weight: 1
 
 ## 手順
 
+{{% steps %}}
+
 ### 1. アプリケーションのインストール
 
 以下のコマンドを実行します。
@@ -28,17 +30,23 @@ $ go install github.com/rokuosan/github-issue-cms@latest
 
 ``gic.config.yaml``という名前でファイルを作成し、以下のような内容を記述します。
 
+ここで指定するリポジトリは、Issueを取得するリポジトリです。
+GitHub Access Tokenは、対象のリポジトリに対するアクセス権を持つものを準備してください。
+
 ```yaml
 github:
   username: '<YOUR_GITHUB_USERNAME>'
   repository: '<YOUR_GITHUB_REPOSITORY>'
 
 hugo:
+  filename:
+    articles: '%Y-%m-%d_%H%M%S.md'
+    images: '[:id].png'
   directory:
     articles: 'content/posts'
+    images: 'static/images/%Y-%m-%d_%H%M%S'
   url:
-    appendSlash: false
-    images: '/images'
+    images: '/images/%Y-%m-%d_%H%M%S'
 ```
 
 ### 3. 実行
@@ -69,5 +77,8 @@ $ tree --dirsfirst
 └── gic.config.yaml
 ```
 
-出力されるディレクトリはHugoで利用される一般的なディレクトリに一致します。
-もし別のディレクトリに出力する際は、``gic.config.yaml``を編集してください。
+出力されるファイルやディレクトリは、``gic.config.yaml``で変更することができます。
+
+``gic.config.yaml``の設定については、[gic.config.yaml の設定](../configuration/parameters)を参照してください。
+
+{{% /steps %}}
