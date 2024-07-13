@@ -11,7 +11,7 @@ func Test_Article_Transform(t *testing.T) {
 		Category:         "Test",
 		Tags:             []string{"test", "sample"},
 		Draft:            false,
-		ExtraFrontMatter: "extra: true\nauthors:\n    - TEST\n",
+		ExtraFrontMatter: "extra: true\nauthors:\n    - TEST\nauthor: sample\n",
 		Key:              "hello-world",
 	}
 
@@ -21,7 +21,7 @@ func Test_Article_Transform(t *testing.T) {
 	}
 
 	want := `---
-author: John Doe
+author: sample
 title: Hello, World!
 date: "2021-01-01T00:00:00Z"
 categories: Test
