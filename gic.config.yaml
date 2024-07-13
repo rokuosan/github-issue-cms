@@ -3,9 +3,22 @@ github:
   repository: 'github-issue-cms'
 
 hugo:
-  bundle: none
+  filename:
+    articles: '%Y-%m-%d_%H%M%S.md'
+    images: '[:id].png'
   directory:
     articles: 'content/posts'
-    images: 'static/images'
+    images: 'static/images/%Y-%m-%d_%H%M%S'
   url:
-    images: '/images'
+    images: '/images/%Y-%m-%d_%H%M%S'
+
+# For page bundle
+# hugo:
+#   filename:
+#     articles: 'index.md'
+#     images: '[:id].png'
+#   directory:
+#     articles: 'content/posts/%Y-%m-%d_%H%M%S'
+#     images: 'content/posts/%Y-%m-%d_%H%M%S'
+#   url:
+#     images: ''
