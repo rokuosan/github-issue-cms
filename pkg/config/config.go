@@ -36,22 +36,7 @@ func load() {
 func Generate() {
 	viperInitialize()
 
-	c := Config{
-		GitHub: &GitHubConfig{
-			Username:   "<YOUR_USERNAME>",
-			Repository: "<YOUR_REPOSITORY>",
-		},
-		Hugo: &HugoConfig{
-			Bundle: "none",
-			Directory: &HugoDirectoryConfig{
-				Articles: "content/posts",
-				Images:   "static/images",
-			},
-			Url: &HugoURLConfig{
-				Images: "/images",
-			},
-		},
-	}
+	c := NewConfig()
 
 	data, err := yaml.Marshal(c)
 	if err != nil {
