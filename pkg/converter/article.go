@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"gopkg.in/yaml.v3"
@@ -47,18 +49,58 @@ type Article struct {
 	Images []*ImageDescriptor `yaml:"-"`
 }
 
-func (self *Article) Export() {
-	mode := config.Get().Hugo.Bundle
+func (article *Article) Export() {
+	datetime, err := time.Parse("2006-01-02T15:04:05Z", article.Date)
+	if err != nil {
+		panic(err)
+	}
 
-	if handler := map[string]func(*Article){
-		"none": noneBundleExport,
-		"leaf": leafBundleExport,
-	}[mode]; handler != nil {
-		handler(self)
+	dest := config.Get().Hugo.Directory.Articles
+	if dest == "" {
+		slog.Error("Hugo directory is not set")
+		return
+	}
+	dest = config.CompileTimeTemplate(datetime, dest)
+	dest = filepath.Clean(dest)
+
+	// Prepare directory
+	if err := createDirectoryIfNotExist(dest); err != nil {
+		slog.Error(fmt.Sprintf("Failed to create directory: %s", dest))
 		return
 	}
 
-	slog.Error(fmt.Sprintf("Invalid export mode: %s", mode))
+	// Build String
+	text, err := article.Transform()
+	if err != nil {
+		panic(err)
+	}
+
+	// Write
+	filename := config.Get().Hugo.Filename.Articles
+	if filename == "" {
+		slog.Error("Hugo filename is not set")
+		return
+	}
+	filename = config.CompileTimeTemplate(datetime, filename)
+	path := filepath.Join(dest, filename)
+	if err := createFileAndWrite(path, text); err != nil {
+		slog.Error(fmt.Sprintf("Failed to write file: %s", path))
+		return
+	}
+
+	// Save images
+	imageDir := config.Get().Hugo.Directory.Images
+	if imageDir == "" {
+		slog.Error("Hugo image directory is not set")
+		return
+	}
+	imageDir = config.CompileTimeTemplate(datetime, imageDir)
+	filename = config.Get().Hugo.Filename.Images
+	filename = config.CompileTimeTemplate(datetime, filename)
+	for _, image := range article.Images {
+		f := strings.ReplaceAll(filename, "[:id]", fmt.Sprintf("%d", image.Id))
+		image.Save(imageDir, f)
+	}
 }
 
 func createDirectoryIfNotExist(path string) error {
@@ -146,76 +188,9 @@ func (self *Article) Transform() (string, error) {
 	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), self.Content), nil
 }
 
-func noneBundleExport(article *Article) {
-	dest := config.Get().Hugo.Directory.Articles
-	if dest == "" {
-		slog.Error("Hugo directory is not set")
-		return
-	}
-	dest = filepath.Clean(dest)
-
-	// Prepare directory
-	if err := createDirectoryIfNotExist(dest); err != nil {
-		slog.Error(fmt.Sprintf("Failed to create directory: %s", dest))
-		return
-	}
-
-	// Build String
-	text, err := article.Transform()
-	if err != nil {
-		panic(err)
-	}
-
-	// Write
-	path := filepath.Join(dest, article.Key+".md")
-	if err := createFileAndWrite(path, text); err != nil {
-		slog.Error(fmt.Sprintf("Failed to write file: %s", path))
-		return
-	}
-
-	// Save images
-	for _, image := range article.Images {
-		image.Save(filepath.Join(config.Get().Hugo.Directory.Images, article.Key))
-	}
-}
-
-func leafBundleExport(article *Article) {
-	dest := config.Get().Hugo.Directory.Articles
-	if dest == "" {
-		slog.Error("Hugo directory is not set")
-		return
-	}
-	dest = filepath.Clean(dest)
-
-	// Prepare directory
-	path := filepath.Join(dest, article.Key)
-	if err := createDirectoryIfNotExist(path); err != nil {
-		slog.Error(fmt.Sprintf("Failed to create directory: %s", path))
-		return
-	}
-
-	// Build String
-	text, err := article.Transform()
-	if err != nil {
-		panic(err)
-	}
-
-	// Write
-	path = filepath.Join(path, "index.md")
-	if err := createFileAndWrite(path, text); err != nil {
-		slog.Error(fmt.Sprintf("Failed to write file: %s", path))
-		return
-	}
-
-	// Save images
-	for _, image := range article.Images {
-		image.Save(filepath.Join(config.Get().Hugo.Directory.Articles, article.Key))
-	}
-}
-
 // Download downloads the image.
 // Expected path is "path/to/image/".
-func (self *ImageDescriptor) Save(path string) {
+func (self *ImageDescriptor) Save(path string, filename string) {
 	// Download image
 	sendRequest := func(includeToken bool) io.ReadCloser {
 		req, err := http.NewRequest("GET", self.Url, nil)
@@ -264,7 +239,7 @@ func (self *ImageDescriptor) Save(path string) {
 	}
 
 	// Write
-	path = filepath.Join(path, fmt.Sprintf("%d.png", self.Id))
+	path = filepath.Join(path, filename)
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)

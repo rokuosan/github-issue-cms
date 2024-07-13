@@ -228,15 +228,12 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	content = strings.TrimLeft(content, "\n")
 
 	// Make image url
-	isBundleMode := config.Get().Hugo.Bundle != "none"
 	imageUrlPath := config.Get().Hugo.Url.Images
-	imageUrl := func(alt string, key string, id int) string {
-		var path string
-		if isBundleMode {
-			path = filepath.Join(strconv.Itoa(id) + ".png")
-		} else {
-			path = filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
-		}
+	imageUrlPath = config.CompileTimeTemplate(issue.GetCreatedAt().Time, imageUrlPath)
+	filename := config.Get().Hugo.Filename.Images
+	imageUrl := func(alt string, id int) string {
+		name := strings.ReplaceAll(filename, "[:id]", strconv.Itoa(id))
+		path := filepath.Join(imageUrlPath, name)
 		path = filepath.Clean(path)
 		return "![" + alt + "](" + path + ")"
 	}
@@ -248,7 +245,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	re := regexp.MustCompile(`!\[image*]\((.*)\)`)
 	match := re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
-		replaced := imageUrl(m[1], time, i)
+		replaced := imageUrl(m[1], i)
 		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[1], Time: time, Id: i})
 		slog.Debug("Found: (ID:" + strconv.Itoa(i) + ") " + time + " " + m[1])
 		content = strings.Replace(content, m[0], replaced, -1)
@@ -260,7 +257,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	match = re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
 		offset += i
-		replaced := imageUrl(m[1], time, offset)
+		replaced := imageUrl(m[1], offset)
 		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[2], Time: time, Id: offset})
 		slog.Debug("Found: " + strconv.Itoa(offset) + " " + time + " " + m[2])
 		content = strings.Replace(content, m[0], replaced, -1)
