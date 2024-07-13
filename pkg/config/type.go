@@ -77,6 +77,6 @@ func NewHugoFilenameConfig() *HugoFilenameConfig {
 
 func NewHugoURLConfig() *HugoURLConfig {
 	return &HugoURLConfig{
-		Images: "/images/%Y-%m-%d_%H%M%S/[:id].png",
+		Images: "/images/%Y-%m-%d_%H%M%S",
 	}
 }
