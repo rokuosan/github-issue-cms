@@ -3,10 +3,7 @@ package converter
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -101,92 +98,6 @@ func (c *Converter) GetIssues() []*github.Issue {
 	slog.Debug(fmt.Sprintf("Remaining Rate Limit: %d/%d (Reset: %s)", rate.Remaining, rate.Limit, rate.Reset))
 
 	return issues
-}
-
-func (c *Converter) downloadImage(url string, time string, number int) {
-	imageDirectory := config.Get().Hugo.Directory.Images
-	path := filepath.Clean(imageDirectory)
-
-	base := filepath.Join(path, time)
-	dest := filepath.Join(base, strconv.Itoa(number)+".png")
-
-	// Create directory
-	if _, err := os.Stat(base); os.IsNotExist(err) {
-		err := os.MkdirAll(base, 0777)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	slog.Debug("Downloading: " + url)
-	file, err := os.Create(dest)
-	if err != nil {
-		panic(err)
-	}
-	defer func(file *os.File) {
-		_ = file.Close()
-	}(file)
-
-	containsToken := true
-request:
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		panic(err)
-	}
-	if containsToken {
-		req.Header.Set("Authorization", "token "+c.token)
-	}
-	client := new(http.Client)
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(resp.Body)
-
-	// Check response
-	contentType := resp.Header.Get("Content-Type")
-
-	if resp.StatusCode != 200 || contentType != "image/png" {
-		slog.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
-
-		if resp.StatusCode == 400 && contentType == "application/xml" {
-			data, _ := io.ReadAll(resp.Body)
-			if strings.Contains(string(data), "Unsupported Authorization Type") {
-				if containsToken {
-					// Retry once
-					containsToken = false
-					goto request
-				}
-			}
-		}
-
-		_ = file.Close()
-		err := os.Remove(dest)
-		if err != nil {
-			panic(err)
-		}
-
-		return
-	}
-	slog.Debug(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
-
-	// Write the body to file
-	written, err := io.Copy(file, resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	slog.Debug("Downloaded image: " + dest + " (" + fmt.Sprintf("%d", written) + " bytes)")
-}
-
-func (c *Converter) SaveImages(descriptors []*ImageDescriptor) {
-	for _, d := range descriptors {
-		c.downloadImage(d.Url, d.Time, d.Id)
-	}
 }
 
 // IssueToArticle converts an issue into article. Returns an Article object and array of ImageDescriptor.
