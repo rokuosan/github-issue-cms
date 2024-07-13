@@ -53,7 +53,7 @@ Hugo の設定です。
 
 #### `url`
 
-- `images`: 画像の URL
+- `images`: Markdownから参照される画像のURL
 
 ## プレースホルダ
 
