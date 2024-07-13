@@ -3,10 +3,7 @@ package converter
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -103,92 +100,6 @@ func (c *Converter) GetIssues() []*github.Issue {
 	return issues
 }
 
-func (c *Converter) downloadImage(url string, time string, number int) {
-	imageDirectory := config.Get().Hugo.Directory.Images
-	path := filepath.Clean(imageDirectory)
-
-	base := filepath.Join(path, time)
-	dest := filepath.Join(base, strconv.Itoa(number)+".png")
-
-	// Create directory
-	if _, err := os.Stat(base); os.IsNotExist(err) {
-		err := os.MkdirAll(base, 0777)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	slog.Debug("Downloading: " + url)
-	file, err := os.Create(dest)
-	if err != nil {
-		panic(err)
-	}
-	defer func(file *os.File) {
-		_ = file.Close()
-	}(file)
-
-	containsToken := true
-request:
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		panic(err)
-	}
-	if containsToken {
-		req.Header.Set("Authorization", "token "+c.token)
-	}
-	client := new(http.Client)
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(resp.Body)
-
-	// Check response
-	contentType := resp.Header.Get("Content-Type")
-
-	if resp.StatusCode != 200 || contentType != "image/png" {
-		slog.Error(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
-
-		if resp.StatusCode == 400 && contentType == "application/xml" {
-			data, _ := io.ReadAll(resp.Body)
-			if strings.Contains(string(data), "Unsupported Authorization Type") {
-				if containsToken {
-					// Retry once
-					containsToken = false
-					goto request
-				}
-			}
-		}
-
-		_ = file.Close()
-		err := os.Remove(dest)
-		if err != nil {
-			panic(err)
-		}
-
-		return
-	}
-	slog.Debug(fmt.Sprintf("Response: %d %s", resp.StatusCode, contentType))
-
-	// Write the body to file
-	written, err := io.Copy(file, resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	slog.Debug("Downloaded image: " + dest + " (" + fmt.Sprintf("%d", written) + " bytes)")
-}
-
-func (c *Converter) SaveImages(descriptors []*ImageDescriptor) {
-	for _, d := range descriptors {
-		c.downloadImage(d.Url, d.Time, d.Id)
-	}
-}
-
 // IssueToArticle converts an issue into article. Returns an Article object and array of ImageDescriptor.
 func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	if issue.IsPullRequest() {
@@ -228,15 +139,12 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	content = strings.TrimLeft(content, "\n")
 
 	// Make image url
-	isBundleMode := config.Get().Hugo.Bundle != "none"
 	imageUrlPath := config.Get().Hugo.Url.Images
-	imageUrl := func(alt string, key string, id int) string {
-		var path string
-		if isBundleMode {
-			path = filepath.Join(strconv.Itoa(id) + ".png")
-		} else {
-			path = filepath.Join(imageUrlPath, key, strconv.Itoa(id)+".png")
-		}
+	imageUrlPath = config.CompileTimeTemplate(issue.GetCreatedAt().Time, imageUrlPath)
+	filename := config.Get().Hugo.Filename.Images
+	imageUrl := func(alt string, id int) string {
+		name := strings.ReplaceAll(filename, "[:id]", strconv.Itoa(id))
+		path := filepath.Join(imageUrlPath, name)
 		path = filepath.Clean(path)
 		return "![" + alt + "](" + path + ")"
 	}
@@ -248,7 +156,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	re := regexp.MustCompile(`!\[image*]\((.*)\)`)
 	match := re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
-		replaced := imageUrl(m[1], time, i)
+		replaced := imageUrl(m[1], i)
 		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[1], Time: time, Id: i})
 		slog.Debug("Found: (ID:" + strconv.Itoa(i) + ") " + time + " " + m[1])
 		content = strings.Replace(content, m[0], replaced, -1)
@@ -260,7 +168,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	match = re.FindAllStringSubmatch(content, -1)
 	for i, m := range match {
 		offset += i
-		replaced := imageUrl(m[1], time, offset)
+		replaced := imageUrl(m[1], offset)
 		imageDescriptors = append(imageDescriptors, &ImageDescriptor{Url: m[2], Time: time, Id: offset})
 		slog.Debug("Found: " + strconv.Itoa(offset) + " " + time + " " + m[2])
 		content = strings.Replace(content, m[0], replaced, -1)

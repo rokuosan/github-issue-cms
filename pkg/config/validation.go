@@ -2,8 +2,6 @@ package config
 
 import (
 	"log/slog"
-	"slices"
-	"strings"
 )
 
 func (c *Config) validate() {
@@ -12,7 +10,6 @@ func (c *Config) validate() {
 		fn           func() bool
 	}{
 		// Constraints
-		{"Invalid bandle type: " + c.Hugo.Bundle, c.Hugo.IsValidBundleType},
 		{"Failed to validate deprecated options", c.WarnDeprecatedOptions},
 	}
 
@@ -25,19 +22,12 @@ func (c *Config) validate() {
 	}
 }
 
-func (c *HugoConfig) IsValidBundleType() bool {
-	allowType := []string{
-		"none",
-		"leaf",
-		"branch",
-	}
-
-	return slices.Contains(allowType, strings.ToLower(c.Bundle))
-}
-
 func (c *Config) WarnDeprecatedOptions() bool {
 	if c.Hugo.Url.AppendSlash {
 		slog.Warn("hugo.url.appendSlash is deprecated. This option will be ignored.")
+	}
+	if c.Hugo.Bundle != "" {
+		slog.Warn("hugo.bundle is deprecated. This option will be ignored.")
 	}
 
 	return true
