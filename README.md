@@ -24,12 +24,18 @@ Create a YAML file named ``gic.config.yaml`` and write your credentials.
 
 ```yaml
 github:
-  username: 'your-name'
-  repository: 'your-repository'
+  username: '<YOUR_GITHUB_USERNAME>'
+  repository: '<YOUR_GITHUB_REPOSITORY>'
 
 hugo:
+  filename:
+    articles: '%Y-%m-%d_%H%M%S.md'
+    images: '[:id].png'
+  directory:
+    articles: 'content/posts'
+    images: 'static/images/%Y-%m-%d_%H%M%S'
   url:
-    images: '/images'
+    images: '/images/%Y-%m-%d_%H%M%S'
 ```
 
 ### 3. Run
