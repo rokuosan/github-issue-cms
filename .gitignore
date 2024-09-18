@@ -24,3 +24,5 @@ go.work
 **/node_modules/**
 **/resources/**
 **/public/**
+
+**/example/**
