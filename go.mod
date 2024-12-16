@@ -3,7 +3,6 @@ module github.com/rokuosan/github-issue-cms
 go 1.22.4
 
 require (
-	github.com/google/go-github/v56 v56.0.0
 	github.com/google/go-github/v67 v67.0.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0

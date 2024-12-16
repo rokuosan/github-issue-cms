@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v56/github"
+	"github.com/google/go-github/v67/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
