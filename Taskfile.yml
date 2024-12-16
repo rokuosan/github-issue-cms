@@ -25,3 +25,8 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}/docs'
     cmds:
       - "hugo mod get -u"
+
+  lint:
+    desc: "Run linters."
+    cmds:
+      - "golangci-lint run"
