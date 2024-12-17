@@ -4,7 +4,7 @@ import (
 	"github.com/google/go-github/v67/github"
 	"net/http"
 	"net/http/httptest"
-	url2 "net/url"
+	"net/url"
 	"testing"
 )
 
@@ -20,13 +20,13 @@ func mockServer(t *testing.T) (*github.Client, *http.ServeMux, string) {
 	server := httptest.NewServer(m)
 
 	client := github.NewClient(nil)
-	url, err := url2.Parse(server.URL + baseURLPath + "/")
+	uri, err := url.Parse(server.URL + baseURLPath + "/")
 	if err != nil {
 		t.Error(err)
 	}
 
-	client.BaseURL = url
-	client.UploadURL = url
+	client.BaseURL = uri
+	client.UploadURL = uri
 
 	t.Cleanup(server.Close)
 	return client, mux, server.URL
