@@ -13,7 +13,11 @@ const (
 )
 
 type GitHub interface {
-	GetIssues() []*github.Issue
+	GetIssues() []*GitHubIssue
+}
+
+type GitHubIssue struct {
+	*github.Issue
 }
 
 type githubAPI struct {
@@ -37,8 +41,8 @@ func NewGitHubAPI(client *github.Client, username, repository string) GitHub {
 	}
 }
 
-func (g *githubAPI) GetIssues() []*github.Issue {
-	var issues []*github.Issue
+func (g *githubAPI) GetIssues() []*GitHubIssue {
+	var issues []*GitHubIssue
 	var limit github.Rate
 	next := 1
 	for next != 0 {
@@ -64,7 +68,7 @@ func (g *githubAPI) GetIssues() []*github.Issue {
 				slog.Debug(fmt.Sprintf("Skip PR: %s", item.GetTitle()))
 				continue
 			}
-			issues = append(issues, item)
+			issues = append(issues, &GitHubIssue{item})
 		}
 
 		next = resp.NextPage
