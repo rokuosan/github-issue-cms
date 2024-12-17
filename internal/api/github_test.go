@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/google/go-github/v67/github"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +11,8 @@ import (
 )
 
 const baseURLPath = "/api-v3"
+
+var issuesDB = map[string][]*github.Issue{}
 
 func mockServer(t *testing.T) (*github.Client, *http.ServeMux, string) {
 	t.Helper()
@@ -32,25 +36,59 @@ func mockServer(t *testing.T) (*github.Client, *http.ServeMux, string) {
 	return client, mux, server.URL
 }
 
-func mockIssueEndpoint(mux *http.ServeMux) {
-	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`[{"title":"test issue"}]`))
-	})
+func mockIssueEndpoint(mux *http.ServeMux, username, repository string) {
+	mux.HandleFunc(
+		fmt.Sprintf("/repos/%s/%s/issues", username, repository),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+
+			// Get issues from DB
+			issues := issuesDB[username+"/"+repository]
+			_ = json.NewEncoder(w).Encode(issues)
+		},
+	)
 }
 
 func TestGithubAPI_GetIssues(t *testing.T) {
 	client, mux, _ := mockServer(t)
-	mockIssueEndpoint(mux)
+	username, repository := "owner", "repo"
+	mockIssueEndpoint(mux, username, repository)
 
-	api := NewGitHubAPI(client, "owner", "repo")
+	issuesDB[username+"/"+repository] = []*github.Issue{
+		{
+			Title: github.String("Example Issue"),
+		},
+		{
+			Title: github.String("Example Issue 2"),
+		},
+		{
+			Title:            github.String("Example Pull Request"),
+			PullRequestLinks: &github.PullRequestLinks{},
+		},
+	}
+
+	api := NewGitHubAPI(client, username, repository)
 	issues := api.GetIssues()
 
-	if len(issues) != 1 {
-		t.Errorf("Expected 1 issue, got %d", len(issues))
+	if len(issues) != 2 {
+		t.Errorf("Expected 2 issues, got %d", len(issues))
 	}
-	if issues[0].GetTitle() != "test issue" {
-		t.Errorf("Expected title 'test issue', got %s", issues[0].GetTitle())
-	}
+}
+
+func TestNewGitHubAPI(t *testing.T) {
+	client := github.NewClient(nil)
+	_ = NewGitHubAPI(client, "owner", "repo")
+	// Test panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+
+	_ = NewGitHubAPI(nil, "owner", "repo")
+	_ = NewGitHubAPI(client, "", "repo")
+	_ = NewGitHubAPI(client, "owner", "")
+	_ = NewGitHubAPI(client, "", "")
+	_ = NewGitHubAPI(nil, "", "")
 }
