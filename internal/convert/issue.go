@@ -3,18 +3,11 @@ package convert
 import (
 	"github.com/rokuosan/github-issue-cms/internal/api"
 	"gopkg.in/yaml.v3"
-	"regexp"
 	"strings"
 )
 
 type issue struct {
 	*api.GitHubIssue
-}
-
-var regex = struct {
-	FrontMatter *regexp.Regexp
-}{
-	FrontMatter: regexp.MustCompile("(?s)^\\s*```\\n([^`]*)\\n```"),
 }
 
 // ConvertToArticle converts the issue to an article
