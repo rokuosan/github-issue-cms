@@ -1,16 +1,14 @@
 package convert
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func assertFindStringSubMatch(t *testing.T, got, want []string) {
 	t.Helper()
-	if len(got) != len(want) {
-		t.Errorf("len(got) = %d, want %d", len(got), len(want))
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			t.Errorf("got[%d] = %#v, want %#v", i, got[i], want[i])
-		}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %#v, want %#v", got, want)
 	}
 }
 
@@ -91,6 +89,43 @@ func TestRegex_MarkdownLink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := regex.MarkdownLink.FindStringSubmatch(tt.input); got != nil {
+				assertFindStringSubMatch(t, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestRegex_HTMLImage(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "HTMLのimage タグを取れる",
+			input:    `<img alt="sample" src="https://example.com">`,
+			expected: []string{`<img alt="sample" src="https://example.com">`, "sample", "https://example.com", "", ""},
+		},
+		{
+			name:     "HTMLのimage タグのaltとsrcが逆でも取れる",
+			input:    `<img alt="sample" src="https://example.com">`,
+			expected: []string{`<img alt="sample" src="https://example.com">`, "sample", "https://example.com", "", ""},
+		},
+		{
+			name:     "HTMLのimageがないときはヒットしない",
+			input:    "sample content",
+			expected: nil,
+		},
+		{
+			name:     "途中で改行があっても、HTMLのimageタグとしてみる",
+			input:    "<img alt=\"sample\" \n src=\"https://example.com\">",
+			expected: []string{"<img alt=\"sample\" \n src=\"https://example.com\">", "sample", "https://example.com", "", ""},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := regex.HTMLImage.FindStringSubmatch(tt.input); got != nil {
 				assertFindStringSubMatch(t, got, tt.expected)
 			}
 		})
