@@ -7,13 +7,24 @@ func TestRegex_FrontMatter(t *testing.T) {
 		name     string
 		input    string
 		expected string
-		test     func(t *testing.T)
+		test     map[string]func(t *testing.T)
 	}{
 		{
 			name: "先頭にあるフロントマターを取れる",
 			input: "```\nsample front matter\n```\n" +
 				"sample content",
 			expected: "```\nsample front matter\n```",
+			test: map[string]func(t *testing.T){
+				"中身が取れる": func(t *testing.T) {
+					got := regex.FrontMatter.FindStringSubmatch(
+						"```\nsample front matter\n```\n" +
+							"sample content",
+					)
+					if got[1] != "sample front matter" {
+						t.Errorf("regex.FrontMatter.FindStringSubmatch()[1] = %#v, want %#v", got[1], "sample front matter")
+					}
+				},
+			},
 		},
 		{
 			name: "先頭以外にあるフロントマターは取れない",
@@ -30,5 +41,8 @@ func TestRegex_FrontMatter(t *testing.T) {
 				t.Errorf("regex.FrontMatter.FindString() = %#v, want %#v", got, tt.expected)
 			}
 		})
+		for name, test := range tt.test {
+			t.Run(name, test)
+		}
 	}
 }
