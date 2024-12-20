@@ -7,6 +7,7 @@ func TestRegex_FrontMatter(t *testing.T) {
 		name     string
 		input    string
 		expected string
+		test     func(t *testing.T)
 	}{
 		{
 			name: "先頭にあるフロントマターを取れる",
