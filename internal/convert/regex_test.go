@@ -64,23 +64,23 @@ func TestRegex_MarkdownLink(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:     "マークダウンリンクを取れる",
+			name:     "リンクを取れる",
 			input:    "sample [link](https://example.com) content",
 			expected: []string{"[link](https://example.com)", "link", "https://example.com"},
 		},
 		{
-			name:     "マークダウンリンクがない",
+			name:     "リンクがない",
 			input:    "sample content",
 			expected: nil,
 		},
 		{
-			name: "途中で改行がある場合はマークダウンリンクではない",
+			name: "途中で改行がある場合はリンクではない",
 			input: "sample [link](https://example\n.com)\n" +
 				"sample content",
 			expected: nil,
 		},
 		{
-			name:     "無効なURLが含まれたマークダウンリンク",
+			name:     "無効なURLが含まれたリンク",
 			input:    "[link](https://example.com[])\n",
 			expected: nil,
 		},
@@ -127,6 +127,82 @@ func TestRegex_HTMLImage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := regex.HTMLImage.FindStringSubmatch(tt.input); got != nil {
 				assertFindStringSubMatch(t, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestRegex_MarkdownCodeBlock(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "コードブロックを取れる",
+			input: "sample\n" +
+				"```\n" +
+				"sample code\n" +
+				"```\n" +
+				"sample content",
+			expected: "```\nsample code\n```",
+		},
+		{
+			name:     "コードブロックがない",
+			input:    "sample content",
+			expected: "",
+		},
+		{
+			name: "タグがついていてもコードブロックを取れる",
+			input: "sample\n" +
+				"```type\n" +
+				"sample code\n" +
+				"```\n" +
+				"sample content",
+			expected: "```type\nsample code\n```",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := regex.MarkdownCodeBlock.FindString(tt.input); got != tt.expected {
+				t.Errorf("regex.MarkdownCodeBlock.FindString() = %#v, want %#v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestRegex_MarkdownInlineCodeBlock(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "バッククオートが1つのインラインコードブロックを取れる",
+			input: "sample\n" +
+				"`sample code`\n" +
+				"sample content",
+			expected: "`sample code`",
+		},
+		{
+			name: "バッククオートが2つのインラインコードブロックを取れる",
+			input: "sample\n" +
+				"``sample code``\n" +
+				"sample content",
+			expected: "``sample code``",
+		},
+		{
+			name:     "インラインコードブロックがない",
+			input:    "sample content",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := regex.MarkdownInlineCodeBlock.FindString(tt.input); got != tt.expected {
+				t.Errorf("regex.MarkdownInlineCodeBlock.FindString() = %#v, want %#v", got, tt.expected)
 			}
 		})
 	}
