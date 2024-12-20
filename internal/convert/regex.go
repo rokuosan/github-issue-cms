@@ -7,5 +7,5 @@ var regex = struct {
 	MarkdownLink *regexp.Regexp
 }{
 	FrontMatter:  regexp.MustCompile("(?s)^\\s*```\\n([^`]*)\\n```"),
-	MarkdownLink: regexp.MustCompile(`\[(.*?)]\((.*?)\)`),
+	MarkdownLink: regexp.MustCompile(`\[(^[\n\r]*)]\((^[\n\r]*)\)`),
 }

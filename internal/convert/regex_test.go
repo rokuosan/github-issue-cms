@@ -2,6 +2,18 @@ package convert
 
 import "testing"
 
+func assertFindStringSubMatch(t *testing.T, got, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Errorf("len(got) = %d, want %d", len(got), len(want))
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("got[%d] = %#v, want %#v", i, got[i], want[i])
+		}
+	}
+}
+
 func TestRegex_FrontMatter(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -44,5 +56,43 @@ func TestRegex_FrontMatter(t *testing.T) {
 		for name, test := range tt.test {
 			t.Run(name, test)
 		}
+	}
+}
+
+func TestRegex_MarkdownLink(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "マークダウンリンクを取れる",
+			input:    "sample [link](https://example.com) content",
+			expected: []string{"[link](https://example.com)", "link", "https://example.com"},
+		},
+		{
+			name:     "マークダウンリンクがない",
+			input:    "sample content",
+			expected: nil,
+		},
+		{
+			name: "途中で改行がある場合はマークダウンリンクではない",
+			input: "sample [link](https://example\n.com)\n" +
+				"sample content",
+			expected: nil,
+		},
+		{
+			name:     "無効なURLが含まれたマークダウンリンク",
+			input:    "[link](https://example.com[])\n",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := regex.MarkdownLink.FindStringSubmatch(tt.input); got != nil {
+				assertFindStringSubMatch(t, got, tt.expected)
+			}
+		})
 	}
 }
