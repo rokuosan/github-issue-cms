@@ -207,3 +207,36 @@ func TestRegex_MarkdownInlineCodeBlock(t *testing.T) {
 		})
 	}
 }
+
+func TestRegex_MarkdownImage(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "マークダウンのimage タグを取れる",
+			input:    `![sample](https://example.com)`,
+			expected: []string{`![sample](https://example.com)`, "sample", "https://example.com"},
+		},
+		{
+			name:     "マークダウンのimage タグがない",
+			input:    "sample content",
+			expected: nil,
+		},
+		{
+			name: "途中で改行がある場合はリンクではない",
+			input: "![sample](https://example\n.com)\n" +
+				"sample content",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := regex.MarkdownImage.FindStringSubmatch(tt.input); got != nil {
+				assertFindStringSubMatch(t, got, tt.expected)
+			}
+		})
+	}
+}
