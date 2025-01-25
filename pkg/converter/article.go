@@ -50,9 +50,20 @@ type Article struct {
 }
 
 func (article *Article) Export() {
-	datetime, err := time.Parse("2006-01-02T15:04:05Z", article.Date)
+	// Build String
+	text, err := article.Transform()
 	if err != nil {
 		panic(err)
+	}
+
+	// Parse Date
+	datetime, err := time.Parse("2006-01-02T15:04:05Z", article.Date)
+	if err != nil {
+		datetime, err = time.Parse("2006-01-02", article.Date)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Failed to parse date: %s", article.Date))
+			return
+		}
 	}
 
 	dest := config.Get().Hugo.Directory.Articles
@@ -67,12 +78,6 @@ func (article *Article) Export() {
 	if err := createDirectoryIfNotExist(dest); err != nil {
 		slog.Error(fmt.Sprintf("Failed to create directory: %s", dest))
 		return
-	}
-
-	// Build String
-	text, err := article.Transform()
-	if err != nil {
-		panic(err)
 	}
 
 	// Write
