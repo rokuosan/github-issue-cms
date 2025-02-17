@@ -4,6 +4,7 @@ go 1.22.4
 
 require (
 	github.com/google/go-github/v67 v67.0.0
+	github.com/google/go-github/v69 v69.2.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 )
