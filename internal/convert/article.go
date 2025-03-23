@@ -1,5 +1,11 @@
 package convert
 
+import (
+	"fmt"
+	"io"
+	"net/http"
+)
+
 type Article struct {
 	Title            string   `yaml:"title"`
 	Content          string   `yaml:"-"`
@@ -16,6 +22,10 @@ type ArticleImage struct {
 	Source   string `yaml:"source"`
 	Alt      string `yaml:"alt"`
 	Original string `yaml:"original"`
+}
+
+type Downloader interface {
+	Download() ([]byte, error)
 }
 
 // contentWithoutCodeBlocks returns the content of the article without code blocks
@@ -56,4 +66,38 @@ func (a *Article) images() []ArticleImage {
 	}
 
 	return images
+}
+
+type githubDownloader struct {
+	target ArticleImage
+	token  string
+}
+
+func newGitHubDownloader(target ArticleImage, token string) Downloader {
+	return &githubDownloader{target, token}
+}
+
+func (g *githubDownloader) Download() ([]byte, error) {
+	c := new(http.Client)
+	url := g.target.Source
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if g.token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("token %s", g.token))
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bad response: %s", resp.Status)
+	}
+
+	return io.ReadAll(resp.Body)
 }

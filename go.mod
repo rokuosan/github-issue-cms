@@ -3,10 +3,15 @@ module github.com/rokuosan/github-issue-cms
 go 1.22.4
 
 require (
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v67 v67.0.0
+	github.com/h2non/gock v1.2.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
+	go.uber.org/mock v0.5.0
 )
+
+require github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect

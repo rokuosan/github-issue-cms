@@ -3,14 +3,18 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-github/v67/github"
 	"log/slog"
+
+	"github.com/google/go-github/v67/github"
 )
 
 const (
 	stateAll       = "all"
 	defaultPerPage = 200
 )
+
+type Client interface {
+}
 
 type GitHub interface {
 	GetIssues() []*GitHubIssue
