@@ -30,3 +30,8 @@ tasks:
     desc: "Run linters."
     cmds:
       - "golangci-lint run"
+
+  test:
+    desc: "Run tests."
+    cmds:
+      - "go test -v ./..."

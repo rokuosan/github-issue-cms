@@ -144,9 +144,9 @@ func createFileAndWrite(path string, content string) error {
 }
 
 // Transform transforms the article to the markdown format.
-func (self *Article) Transform() (string, error) {
+func (a *Article) Transform() (string, error) {
 	extra := make(map[string]interface{})
-	err := yaml.Unmarshal([]byte(self.ExtraFrontMatter), &extra)
+	err := yaml.Unmarshal([]byte(a.ExtraFrontMatter), &extra)
 	if err != nil {
 		return "", err
 	}
@@ -154,27 +154,27 @@ func (self *Article) Transform() (string, error) {
 	// Overwrite self if extra has the same key
 	// and delete the key from extra
 	if author, ok := extra["author"]; ok {
-		self.Author = author.(string)
+		a.Author = author.(string)
 		delete(extra, "author")
 	}
 	if title, ok := extra["title"]; ok {
-		self.Title = title.(string)
+		a.Title = title.(string)
 		delete(extra, "title")
 	}
 	if date, ok := extra["date"]; ok {
-		self.Date = date.(string)
+		a.Date = date.(string)
 		delete(extra, "date")
 	}
 	if categories, ok := extra["categories"]; ok {
-		self.Category = categories.(string)
+		a.Category = categories.(string)
 		delete(extra, "categories")
 	}
 	if tags, ok := extra["tags"]; ok {
-		self.Tags = tags.([]string)
+		a.Tags = tags.([]string)
 		delete(extra, "tags")
 	}
 	if draft, ok := extra["draft"]; ok {
-		self.Draft = draft.(bool)
+		a.Draft = draft.(bool)
 		delete(extra, "draft")
 	}
 
@@ -183,22 +183,22 @@ func (self *Article) Transform() (string, error) {
 		return "", err
 	}
 
-	partial, err := yaml.Marshal(self)
+	partial, err := yaml.Marshal(a)
 	if err != nil {
 		panic(err)
 	}
 	frontmatter := string(partial)
 	frontmatter += string(extraFrontMatter)
 
-	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), self.Content), nil
+	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), a.Content), nil
 }
 
 // Download downloads the image.
 // Expected path is "path/to/image/".
-func (self *ImageDescriptor) Save(path string, filename string) {
+func (d *ImageDescriptor) Save(path string, filename string) {
 	// Download image
 	sendRequest := func(includeToken bool) io.ReadCloser {
-		req, err := http.NewRequest("GET", self.Url, nil)
+		req, err := http.NewRequest("GET", d.Url, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -233,7 +233,7 @@ func (self *ImageDescriptor) Save(path string, filename string) {
 	}(body)
 
 	if body == nil {
-		slog.Error(fmt.Sprintf("Failed to download image: %s", self.Url))
+		slog.Error(fmt.Sprintf("Failed to download image: %s", d.Url))
 		return
 	}
 

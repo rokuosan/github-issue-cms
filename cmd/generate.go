@@ -18,18 +18,19 @@ var generateCmd = &cobra.Command{
 This command will get issues from GitHub and create articles from them.
 The articles will be saved in the "content" directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		config := config.Get()
-		username := config.GitHub.Username
-		repository := config.GitHub.Repository
-		if username == "" || repository == "" {
+		conf := config.Get()
+		if conf.GitHub.Username == "" || conf.GitHub.Repository == "" {
 			slog.Error("Please set username and repository in gic.config.yaml")
 			return
 		}
-		url := config.GitHub.RepositoryURL()
+		url := conf.GitHub.RepositoryURL()
 		slog.Info("Target Repository: " + url)
 
 		// Create articles
-		c := converter.NewConverter()
+		c := converter.NewConverter(converter.Config{
+			Config: conf,
+			Token:  config.GitHubToken,
+		}, config.GitHubToken)
 		issues := c.GetIssues()
 		slog.Info("Found Issues: " + strconv.Itoa(len(issues)))
 		slog.Info("Converting articles...")
