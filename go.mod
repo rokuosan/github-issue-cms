@@ -1,6 +1,6 @@
 module github.com/rokuosan/github-issue-cms
 
-go 1.22.4
+go 1.24
 
 require (
 	github.com/google/go-github/v67 v67.0.0
