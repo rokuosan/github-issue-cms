@@ -148,7 +148,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	frontMatter, err := c.extractFrontMatter(content)
 	if err != nil {
 		slog.Debug("Front matter not found: " + err.Error())
-		frontMatter = definedOrV(frontMatter, []string{"", ""})
+		frontMatter = definedOr(&frontMatter, []string{"", ""})
 	}
 	content = strings.Replace(content, frontMatter[0], "", 1)
 	content = strings.TrimLeft(content, "\n")
