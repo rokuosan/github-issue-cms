@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/google/go-github/v67 v67.0.0
 	github.com/spf13/cobra v1.9.1
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 )
 
 require github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
