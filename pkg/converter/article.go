@@ -49,24 +49,32 @@ type Article struct {
 	Images []*ImageDescriptor `yaml:"-"`
 }
 
-func (article *Article) Export() {
+func (a *Article) parseDateTime() (time.Time, error) {
+	var err error
+	if t, err := time.Parse("2006-01-02T15:04:05Z", a.Date); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse("2006-01-02", a.Date); err == nil {
+		return t, nil
+	}
+	return time.Time{}, fmt.Errorf("failed to parse date %s: %w", a.Date, err)
+}
+
+func (a *Article) Export(conf config.Config) {
 	// Build String
-	text, err := article.Transform()
+	text, err := a.Transform()
 	if err != nil {
 		panic(err)
 	}
 
 	// Parse Date
-	datetime, err := time.Parse("2006-01-02T15:04:05Z", article.Date)
+	datetime, err := a.parseDateTime()
 	if err != nil {
-		datetime, err = time.Parse("2006-01-02", article.Date)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Failed to parse date: %s", article.Date))
-			return
-		}
+		slog.Error("skip exporting for this article due to failed to parse datetime", "error", err.Error(), "article", a)
+		return
 	}
 
-	dest := config.Get().Hugo.Directory.Articles
+	dest := conf.Hugo.Directory.Articles
 	if dest == "" {
 		slog.Error("Hugo directory is not set")
 		return
@@ -81,7 +89,7 @@ func (article *Article) Export() {
 	}
 
 	// Write
-	filename := config.Get().Hugo.Filename.Articles
+	filename := conf.Hugo.Filename.Articles
 	if filename == "" {
 		slog.Error("Hugo filename is not set")
 		return
@@ -94,15 +102,15 @@ func (article *Article) Export() {
 	}
 
 	// Save images
-	imageDir := config.Get().Hugo.Directory.Images
+	imageDir := conf.Hugo.Directory.Images
 	if imageDir == "" {
 		slog.Error("Hugo image directory is not set")
 		return
 	}
 	imageDir = config.CompileTimeTemplate(datetime, imageDir)
-	filename = config.Get().Hugo.Filename.Images
+	filename = conf.Hugo.Filename.Images
 	filename = config.CompileTimeTemplate(datetime, filename)
-	for _, image := range article.Images {
+	for _, image := range a.Images {
 		f := strings.ReplaceAll(filename, "[:id]", fmt.Sprintf("%d", image.Id))
 		image.Save(imageDir, f)
 	}
@@ -144,9 +152,9 @@ func createFileAndWrite(path string, content string) error {
 }
 
 // Transform transforms the article to the markdown format.
-func (self *Article) Transform() (string, error) {
+func (a *Article) Transform() (string, error) {
 	extra := make(map[string]interface{})
-	err := yaml.Unmarshal([]byte(self.ExtraFrontMatter), &extra)
+	err := yaml.Unmarshal([]byte(a.ExtraFrontMatter), &extra)
 	if err != nil {
 		return "", err
 	}
@@ -154,27 +162,27 @@ func (self *Article) Transform() (string, error) {
 	// Overwrite self if extra has the same key
 	// and delete the key from extra
 	if author, ok := extra["author"]; ok {
-		self.Author = author.(string)
+		a.Author = author.(string)
 		delete(extra, "author")
 	}
 	if title, ok := extra["title"]; ok {
-		self.Title = title.(string)
+		a.Title = title.(string)
 		delete(extra, "title")
 	}
 	if date, ok := extra["date"]; ok {
-		self.Date = date.(string)
+		a.Date = date.(string)
 		delete(extra, "date")
 	}
 	if categories, ok := extra["categories"]; ok {
-		self.Category = categories.(string)
+		a.Category = categories.(string)
 		delete(extra, "categories")
 	}
 	if tags, ok := extra["tags"]; ok {
-		self.Tags = tags.([]string)
+		a.Tags = tags.([]string)
 		delete(extra, "tags")
 	}
 	if draft, ok := extra["draft"]; ok {
-		self.Draft = draft.(bool)
+		a.Draft = draft.(bool)
 		delete(extra, "draft")
 	}
 
@@ -183,22 +191,22 @@ func (self *Article) Transform() (string, error) {
 		return "", err
 	}
 
-	partial, err := yaml.Marshal(self)
+	partial, err := yaml.Marshal(a)
 	if err != nil {
 		panic(err)
 	}
 	frontmatter := string(partial)
 	frontmatter += string(extraFrontMatter)
 
-	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), self.Content), nil
+	return fmt.Sprintf("---\n%s---\n\n%s\n", string(frontmatter), a.Content), nil
 }
 
 // Download downloads the image.
 // Expected path is "path/to/image/".
-func (self *ImageDescriptor) Save(path string, filename string) {
+func (d *ImageDescriptor) Save(path string, filename string) {
 	// Download image
 	sendRequest := func(includeToken bool) io.ReadCloser {
-		req, err := http.NewRequest("GET", self.Url, nil)
+		req, err := http.NewRequest("GET", d.Url, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -233,7 +241,7 @@ func (self *ImageDescriptor) Save(path string, filename string) {
 	}(body)
 
 	if body == nil {
-		slog.Error(fmt.Sprintf("Failed to download image: %s", self.Url))
+		slog.Error(fmt.Sprintf("Failed to download image: %s", d.Url))
 		return
 	}
 
