@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -187,5 +189,42 @@ func TestArticle_TransformWithInvalidExtraFrontMatter(t *testing.T) {
 	_, err := article.Transform()
 	if err == nil {
 		t.Errorf("Transform() with invalid ExtraFrontMatter should return error")
+	}
+}
+
+func TestImageDescriptor_Save(t *testing.T) {
+	// Start a test HTTP server that returns PNG data.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("PNGDATA"))
+	}))
+	defer ts.Close()
+
+	// Create a temporary directory for saving the image.
+	tempDir, err := os.MkdirTemp("", "imagetest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create an instance of ImageDescriptor using the test server URL.
+	img := &ImageDescriptor{
+		Url: ts.URL,
+		Id:  1,
+	}
+
+	filename := "test.png"
+	// Invoke the Save method.
+	img.Save(tempDir, filename)
+
+	// Verify the saved file exists and contains the expected data.
+	savedPath := filepath.Join(tempDir, filename)
+	data, err := os.ReadFile(savedPath)
+	if err != nil {
+		t.Fatalf("failed to read saved file: %v", err)
+	}
+	if string(data) != "PNGDATA" {
+		t.Errorf("expected file content %q but got %q", "PNGDATA", string(data))
 	}
 }
