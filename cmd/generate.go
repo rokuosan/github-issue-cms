@@ -36,7 +36,7 @@ The articles will be saved in the "content" directory.`,
 		slog.Info("Converting articles...")
 		for _, issue := range issues {
 			article := c.IssueToArticle(issue)
-			article.Export()
+			article.Export(conf)
 		}
 
 		slog.Info("Complete")

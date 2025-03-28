@@ -49,24 +49,32 @@ type Article struct {
 	Images []*ImageDescriptor `yaml:"-"`
 }
 
-func (article *Article) Export() {
+func (a *Article) parseDateTime() (time.Time, error) {
+	var err error
+	if t, err := time.Parse("2006-01-02T15:04:05Z", a.Date); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse("2006-01-02", a.Date); err == nil {
+		return t, nil
+	}
+	return time.Time{}, fmt.Errorf("failed to parse date %s: %w", a.Date, err)
+}
+
+func (a *Article) Export(conf config.Config) {
 	// Build String
-	text, err := article.Transform()
+	text, err := a.Transform()
 	if err != nil {
 		panic(err)
 	}
 
 	// Parse Date
-	datetime, err := time.Parse("2006-01-02T15:04:05Z", article.Date)
+	datetime, err := a.parseDateTime()
 	if err != nil {
-		datetime, err = time.Parse("2006-01-02", article.Date)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Failed to parse date: %s", article.Date))
-			return
-		}
+		slog.Error("skip exporting for this article due to failed to parse datetime", "error", err.Error(), "article", a)
+		return
 	}
 
-	dest := config.Get().Hugo.Directory.Articles
+	dest := conf.Hugo.Directory.Articles
 	if dest == "" {
 		slog.Error("Hugo directory is not set")
 		return
@@ -81,7 +89,7 @@ func (article *Article) Export() {
 	}
 
 	// Write
-	filename := config.Get().Hugo.Filename.Articles
+	filename := conf.Hugo.Filename.Articles
 	if filename == "" {
 		slog.Error("Hugo filename is not set")
 		return
@@ -94,15 +102,15 @@ func (article *Article) Export() {
 	}
 
 	// Save images
-	imageDir := config.Get().Hugo.Directory.Images
+	imageDir := conf.Hugo.Directory.Images
 	if imageDir == "" {
 		slog.Error("Hugo image directory is not set")
 		return
 	}
 	imageDir = config.CompileTimeTemplate(datetime, imageDir)
-	filename = config.Get().Hugo.Filename.Images
+	filename = conf.Hugo.Filename.Images
 	filename = config.CompileTimeTemplate(datetime, filename)
-	for _, image := range article.Images {
+	for _, image := range a.Images {
 		f := strings.ReplaceAll(filename, "[:id]", fmt.Sprintf("%d", image.Id))
 		image.Save(imageDir, f)
 	}
