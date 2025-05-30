@@ -13,7 +13,7 @@ COPY . .
 
 RUN go build -o /go/bin/github-issue-cms .
 
-FROM alpine:3.21
+FROM alpine:3.22
 
 RUN apk add --no-cache ca-certificates
 
