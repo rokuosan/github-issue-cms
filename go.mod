@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/google/go-github/v67 v67.0.0
+	github.com/google/go-github/v73 v73.0.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
