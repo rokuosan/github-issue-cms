@@ -56,7 +56,7 @@ func TestMockConverter(t *testing.T) {
 
 // Test that converterImpl implements Converter interface
 func TestConverterInterface(t *testing.T) {
-	var c converter.Converter = converter.NewConverter(converter.Config{Config: *config.NewConfig()}, "test-token")
+	var c = converter.NewConverter(converter.Config{Config: *config.NewConfig()}, "test-token")
 	assert.NotNil(t, c)
 }
 
