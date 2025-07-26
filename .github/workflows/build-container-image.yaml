@@ -1,0 +1,97 @@
+name: Build Container Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - ".github/workflows/build-container-image.yaml"
+      - "docker/**"
+      - "**/*.go"
+      - "go.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+      actions: write
+      packages: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v4
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value={{date 'YYYYMMDD-HHmmss' tz='Asia/Tokyo'}}-{{sha}},enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=GitHub Issue CMS
+            org.opencontainers.image.description=Convert GitHub Issues to Markdown files
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        id: docker_build
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name == 'push' }}
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Display image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
+
+      - name: Generate artifact attestation
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.docker_build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Run Trivy vulnerability scanner
+        if: ${{ github.event_name == 'push' }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: ${{ github.event_name == 'push' }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
