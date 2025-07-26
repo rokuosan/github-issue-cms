@@ -128,7 +128,7 @@ func (c *converterImpl) GetIssues() []*github.Issue {
 }
 
 func (c *converterImpl) removeCR(content string) string {
-	return strings.Replace(content, "\r", "", -1)
+	return strings.ReplaceAll(content, "\r", "")
 }
 
 func (c *converterImpl) insertTrailingNewline(content string) string {
@@ -248,7 +248,7 @@ func (c *converterImpl) replaceImageURL(input replaceImageURLInput) (string, []*
 		ids = append(ids, &ImageDescriptor{Url: m[1], Time: input.time, Id: n})
 
 		slog.Debug(fmt.Sprintf("Found: (ID:%d) %s %s", n, input.time, m[1]))
-		input.content = strings.Replace(input.content, m[0], replaced, -1)
+		input.content = strings.ReplaceAll(input.content, m[0], replaced)
 	}
 
 	return input.content, ids
