@@ -1,37 +1,37 @@
 ---
-title: 'クイックスタート'
+title: 'Quick Start'
 date: 2021-12-25
 weight: 1
 ---
 
-このページではGitHub Issue CMSの導入について説明します。
+This page explains how to get started with GitHub Issue CMS.
 
-## 前提条件
+## Prerequisites
 
-以下のものを利用します。事前に準備しておいてください。
+The following are required. Please prepare them in advance.
 
 - Go v1.22.1 (or higher)
 - Hugo extended
 - GitHub Access Token
 
-## 手順
+## Steps
 
 {{% steps %}}
 
-### 1. アプリケーションのインストール
+### 1. Install the application
 
-以下のコマンドを実行します。
+Run the following command:
 
 ```shell
 $ go install github.com/rokuosan/github-issue-cms@latest
 ```
 
-### 2. コンフィグの作成
+### 2. Create configuration file
 
-``gic.config.yaml``という名前でファイルを作成し、以下のような内容を記述します。
+Create a file named ``gic.config.yaml`` and write the following content:
 
-ここで指定するリポジトリは、Issueを取得するリポジトリです。
-GitHub Access Tokenは、対象のリポジトリに対するアクセス権を持つものを準備してください。
+The repository specified here is the one from which issues will be fetched.
+Please prepare a GitHub Access Token that has access permissions to the target repository.
 
 ```yaml
 github:
@@ -49,15 +49,15 @@ hugo:
     images: '/images/%Y-%m-%d_%H%M%S'
 ```
 
-### 3. 実行
+### 3. Execute
 
-以下のコマンドを実行して、対象のリポジトリからすべてのIssueをMarkdownに変換します。
+Run the following command to convert all issues from the target repository to Markdown:
 
 ```shell
 $ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>" -d
 ```
 
-もし、Issueに添付画像がある場合は以下のように出力されます。
+If issues have attached images, the output will be as follows:
 
 ```shell
 $ tree --dirsfirst
@@ -77,8 +77,8 @@ $ tree --dirsfirst
 └── gic.config.yaml
 ```
 
-出力されるファイルやディレクトリは、``gic.config.yaml``で変更することができます。
+The output files and directories can be changed in ``gic.config.yaml``.
 
-``gic.config.yaml``の設定については、[gic.config.yaml の設定](../configuration/parameters)を参照してください。
+For more information about ``gic.config.yaml`` settings, please refer to [gic.config.yaml Configuration](../configuration/parameters).
 
 {{% /steps %}}
