@@ -8,16 +8,16 @@ hasCJKLanguage = true
 
 enableInlineShortcodes = true
 
-defaultContentLanguage = "ja"
+defaultContentLanguage = "en"
 [languages]
     [languages.en]
         languageName = "English"
         title = "GitHub Issue CMS"
-        weight = 2
+        weight = 1
     [languages.ja]
         languageName = "日本語"
         title = "GitHub Issue CMS"
-        weight = 1
+        weight = 2
 
 
 [outputs]
