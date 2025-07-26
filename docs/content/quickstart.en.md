@@ -3,64 +3,82 @@ title: 'Quick Start'
 date: 2021-12-25
 weight: 1
 ---
-A headless CMS for Hugo using GitHub Issues.
 
-Issues are treated as articles.
+This page explains how to get started with GitHub Issue CMS.
 
 ## Prerequisites
 
-- Go
-- Hugo
-- GitHub Token
+The following are required. Please prepare them in advance.
 
-## Installation
+- Go v1.22.1 (or higher)
+- Hugo extended
+- GitHub Access Token
 
-### 1. Install this application
+## Steps
 
-```bash
+{{% steps %}}
+
+### 1. Install the application
+
+Run the following command:
+
+```shell
 $ go install github.com/rokuosan/github-issue-cms@latest
 ```
 
-### 2. Create Config file
+### 2. Create configuration file
 
-Create a YAML file named ``gic.config.yaml`` and write your credentials.
+Create a file named ``gic.config.yaml`` and write the following content:
+
+The repository specified here is the one from which issues will be fetched.
+Please prepare a GitHub Access Token that has access permissions to the target repository.
 
 ```yaml
 github:
-  username: 'your-name'
-  repository: 'your-repository'
+  username: '<YOUR_GITHUB_USERNAME>'
+  repository: '<YOUR_GITHUB_REPOSITORY>'
 
 hugo:
+  filename:
+    articles: '%Y-%m-%d_%H%M%S.md'
+    images: '[:id].png'
+  directory:
+    articles: 'content/posts'
+    images: 'static/images/%Y-%m-%d_%H%M%S'
   url:
-    images: '/images'
+    images: '/images/%Y-%m-%d_%H%M%S'
 ```
 
-### 3. Run
+### 3. Execute
 
-Run this application with your GitHub Access Token
+Run the following command to convert all issues from the target repository to Markdown:
 
-```bash
-$ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
+```shell
+$ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>" -d
 ```
 
-If your repository has issues and attached images, they will be exported like this tree.
+If issues have attached images, the output will be as follows:
 
-These directories are compatible with Hugo directory structure, so you can quickly deploy this application to your Hugo site.
-
-```bash
+```shell
 $ tree --dirsfirst
 .
 ├── content
 │   └── posts
-│       ├── 2004501283.md
-│       └── 2006779255.md
+│       ├── 2023-12-21_151921.md
+│       └── 2023-12-22_063216.md
 ├── static
 │   └── images
-│       ├── 2004501283
+│       ├── 2023-12-21_151921
 │       │   └── 0.png
-│       └── 2006779255
+│       └── 2023-12-22_063216
 │           ├── 0.png
 │           ├── 1.png
 │           └── 2.png
 └── gic.config.yaml
 ```
+
+The output files and directories can be changed in ``gic.config.yaml``.
+
+For more information about ``gic.config.yaml`` settings, please refer to [gic.config.yaml Configuration](../configuration/parameters).
+
+{{% /steps %}}
