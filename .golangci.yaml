@@ -24,6 +24,3 @@ formatters:
       - third_party$
       - builtin$
       - examples$
-output:
-  formats:
-    - format: github-actions
