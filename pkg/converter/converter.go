@@ -1,3 +1,4 @@
+//go:generate mockgen -source=$GOFILE -package=${GOPACKAGE}_mock -destination=./mock/$GOFILE
 package converter
 
 import (
@@ -14,7 +15,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Converter struct {
+// Converter interface defines the methods for converting GitHub issues to articles
+type Converter interface {
+	GetIssues() []*github.Issue
+	IssueToArticle(issue *github.Issue) *Article
+}
+
+type converterImpl struct {
 	*github.Client
 	token  string
 	config Config
@@ -41,7 +48,7 @@ var (
 	regexHTMLImage     = regexp.MustCompile(`<img width="\d+" alt="(\w+)" src="(\S+)">`)
 )
 
-func NewConverter(config Config, token string) *Converter {
+func NewConverter(config Config, token string) Converter {
 	slog.Debug("Setting up GitHub Client...")
 	if token == "" {
 		slog.Error("Failed to initialize GitHub Client due to the Token is empty.")
@@ -55,14 +62,14 @@ func NewConverter(config Config, token string) *Converter {
 	}
 
 	slog.Debug("Successfully created GitHub Client")
-	return &Converter{
+	return &converterImpl{
 		Client: client,
 		token:  token,
 		config: config,
 	}
 }
 
-func (c *Converter) GetIssues() []*github.Issue {
+func (c *converterImpl) GetIssues() []*github.Issue {
 	username := c.config.GitHub.Username
 	repository := c.config.GitHub.Repository
 	if username == "" || repository == "" {
@@ -120,11 +127,11 @@ func (c *Converter) GetIssues() []*github.Issue {
 	return issues
 }
 
-func (c *Converter) removeCR(content string) string {
+func (c *converterImpl) removeCR(content string) string {
 	return strings.Replace(content, "\r", "", -1)
 }
 
-func (c *Converter) insertTrailingNewline(content string) string {
+func (c *converterImpl) insertTrailingNewline(content string) string {
 	if !strings.HasSuffix(content, "\n") {
 		return content + "\n"
 	}
@@ -132,7 +139,7 @@ func (c *Converter) insertTrailingNewline(content string) string {
 }
 
 // IssueToArticle converts an issue into article. Returns an Article object and array of ImageDescriptor.
-func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
+func (c *converterImpl) IssueToArticle(issue *github.Issue) *Article {
 	if issue.IsPullRequest() {
 		return nil
 	}
@@ -197,7 +204,7 @@ func (c *Converter) IssueToArticle(issue *github.Issue) *Article {
 	}
 }
 
-func (c *Converter) extractFrontMatter(body string) ([]string, error) {
+func (c *converterImpl) extractFrontMatter(body string) ([]string, error) {
 	re := regexp.MustCompile("(?s)^\\s*```\\n([^`]*)\\n```")
 	match := re.FindStringSubmatch(body)
 
@@ -216,7 +223,7 @@ func (c *Converter) extractFrontMatter(body string) ([]string, error) {
 	return match, nil
 }
 
-func (c *Converter) createMarkdownImageExpression(path, alt string, id int) string {
+func (c *converterImpl) createMarkdownImageExpression(path, alt string, id int) string {
 	name := strings.ReplaceAll(c.config.Hugo.Filename.Images, "[:id]", strconv.Itoa(id))
 	p := filepath.Join(path, name)
 	return fmt.Sprintf("![%s](%s)", alt, p)
@@ -230,7 +237,7 @@ type replaceImageURLInput struct {
 	offset  int
 }
 
-func (c *Converter) replaceImageURL(input replaceImageURLInput) (string, []*ImageDescriptor) {
+func (c *converterImpl) replaceImageURL(input replaceImageURLInput) (string, []*ImageDescriptor) {
 	var ids []*ImageDescriptor
 
 	match := input.re.FindAllStringSubmatch(input.content, -1)
