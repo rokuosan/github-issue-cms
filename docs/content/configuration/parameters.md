@@ -1,14 +1,14 @@
 ---
-title: 'gic.config.yaml の設定'
+title: 'gic.config.yaml Configuration'
 date: 2021-12-25
 weight: 1
 ---
 
-このページでは `gic.config.yaml` の設定について説明します。
+This page explains the configuration of `gic.config.yaml`.
 
-## 全体構成
+## Overall Structure
 
-`gic.config.yaml` は以下のような構成になっています。
+`gic.config.yaml` has the following structure:
 
 ```yaml
 github:
@@ -26,51 +26,51 @@ hugo:
     images: '/images/%Y-%m-%d_%H%M%S'
 ```
 
-## 設定項目
+## Configuration Items
 
 ### `github`
 
-GitHub の設定です。
+GitHub settings.
 
-- `username`: GitHub のユーザー名
-- `repository`: Issue を取得するリポジトリ名
+- `username`: GitHub username
+- `repository`: Repository name to fetch issues from
 
 ### `hugo`
 
-Hugo の設定です。
+Hugo settings.
 
 #### `filename`
 
-- `articles`: 記事のファイル名
-- `images`: 画像のファイル名
+- `articles`: Article filename
+- `images`: Image filename
 
-``[:id]`` は画像の ID に置き換わります。画像の ID はそのIssue内部で一意で、連番で割り振られます。
+`[:id]` will be replaced with the image ID. The image ID is unique within each issue and assigned sequentially.
 
 #### `directory`
 
-- `articles`: 記事の保存先ディレクトリ
-- `images`: 画像の保存先ディレクトリ
+- `articles`: Directory to save articles
+- `images`: Directory to save images
 
 #### `url`
 
-- `images`: Markdownから参照される画像のURL
+- `images`: Image URL referenced from Markdown
 
-## プレースホルダ
+## Placeholders
 
-`gic.config.yaml` では以下のプレースホルダを利用できます。
+The following placeholders are available in `gic.config.yaml`:
 
-- `%Y`: 年
-- `%m`: 月
-- `%d`: 日
-- `%H`: 時
-- `%M`: 分
-- `%S`: 秒
+- `%Y`: Year
+- `%m`: Month
+- `%d`: Day
+- `%H`: Hour
+- `%M`: Minute
+- `%S`: Second
 
-これらのプレースホルダは、`strftime` と同様の書式で利用できます。
+These placeholders can be used in the same format as `strftime`.
 
-## 設定例
+## Configuration Examples
 
-### Hugo のページバンドルを使う場合
+### Using Hugo Page Bundles
 
 #### `gic.config.yaml`
 ```yaml
@@ -85,7 +85,7 @@ hugo:
     images: ''
 ```
 
-#### 出力例
+#### Output Example
 
 {{< filetree/container >}}
   {{< filetree/folder name="content" >}}

@@ -7,16 +7,16 @@ cascade:
   type: docs
 ---
 
-##  {{<icon "book-open">}} 導入
+##  {{<icon "book-open">}} Getting Started
 
 {{<cards>}}
-    {{<card link="quickstart" icon="globe" title="クイックスタート">}}
+    {{<card link="quickstart" icon="globe" title="Quick Start">}}
 {{</cards>}}
 
-## {{<icon "chip">}} 構成
+## {{<icon "chip">}} Configuration
 
 {{<cards>}}
-  {{<card link="configuration/parameters" title="gic.config.yaml の設定" icon="code" >}}
-  {{<card link="configuration/github-actions-integration" title="GitHub Actions との連携" icon="code" >}}
+  {{<card link="configuration/parameters" title="gic.config.yaml reference" icon="code" >}}
+  {{<card link="configuration/github-actions-integration" title="CI with GitHub Actions" icon="code" >}}
 {{</cards>}}
 
