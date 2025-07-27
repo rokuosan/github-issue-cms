@@ -16,12 +16,12 @@ func TestConverterInterface(t *testing.T) {
 }
 
 func TestConverter_IssueToArticle(t *testing.T) {
-	c := &converterImpl{config: Config{Config: *config.NewConfig()}}
-
 	tests := []struct {
-		name     string
-		issue    *github.Issue
-		expected *Article
+		name         string
+		issue        *github.Issue
+		expected     *Article
+		shouldBeNil  bool
+		config       config.Config
 	}{
 		{
 			name: "valid",
@@ -30,21 +30,108 @@ func TestConverter_IssueToArticle(t *testing.T) {
 				Body:      stringPtr("This is a test"),
 				CreatedAt: parseTime("2021-01-01T00:00:00Z"),
 				Labels:    []*github.Label{},
+				User: &github.User{
+					Login: stringPtr("allowed_user1"),
+				},
 			},
 			expected: &Article{
+				Author: "allowed_user1",
 				Title:   "Test",
 				Content: "This is a test\n",
 				Date:    "2021-01-01T00:00:00Z",
 				Key:     "2021-01-01_000000",
 			},
+			config: config.Config{
+				GitHub: &config.GitHubConfig{
+					AllowedAuthors: []string{"allowed_user1", "allowed_user2"},
+				},
+				Hugo: config.NewHugoConfig(),
+			},
+			shouldBeNil: false,
+		},
+		{
+			name: "allowed author",
+			issue: &github.Issue{
+				Title:     stringPtr("Test"),
+				Body:      stringPtr("This is a test"),
+				CreatedAt: parseTime("2021-01-01T00:00:00Z"),
+				User: &github.User{
+					Login: stringPtr("allowed_user1"),
+				},
+			},
+			expected: &Article{
+				Author: "allowed_user1",
+				Title:   "Test",
+				Content: "This is a test\n",
+				Date:    "2021-01-01T00:00:00Z",
+				Key:     "2021-01-01_000000",
+			},
+			config: config.Config{
+				GitHub: &config.GitHubConfig{
+					AllowedAuthors: []string{"allowed_user1", "allowed_user2"},
+				},
+				Hugo: config.NewHugoConfig(),
+			},
+			shouldBeNil: false,
+		},
+		{
+			name: "not allowed author",
+			issue: &github.Issue{
+				Title:     stringPtr("Test"),
+				Body:      stringPtr("This is a test"),
+				CreatedAt: parseTime("2021-01-01T00:00:00Z"),
+				User: &github.User{
+					Login: stringPtr("not_allowed_user"),
+				},
+			},
+			expected:    nil,
+			config: config.Config{
+				GitHub: &config.GitHubConfig{
+					AllowedAuthors: []string{"allowed_user1", "allowed_user2"},
+				},
+				Hugo: config.NewHugoConfig(),
+			},
+			shouldBeNil: true,
+		},
+		{
+			name: "no allowed authors set",
+			issue: &github.Issue{
+				Title:     stringPtr("Test"),
+				Body:      stringPtr("This is a test"),
+				CreatedAt: parseTime("2021-01-01T00:00:00Z"),
+				User: &github.User{
+					Login: stringPtr("any_user"),
+				},
+			},
+			expected: &Article{
+				Author: "any_user",
+				Title:   "Test",
+				Content: "This is a test\n",
+				Date:    "2021-01-01T00:00:00Z",
+				Key:     "2021-01-01_000000",
+			},
+			config: config.Config{
+				GitHub: &config.GitHubConfig{
+					AllowedAuthors: []string{},
+				},
+				Hugo: config.NewHugoConfig(),
+			},
+			shouldBeNil: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			c := &converterImpl{config: Config{Config: tt.config}}
 			result := c.IssueToArticle(tt.issue)
 
-			assert.Equal(t, tt.expected, result)
+			if tt.shouldBeNil {
+				assert.Nil(t, result)
+				println("Expected nil result, got:", result)
+			} else {
+				assert.Equal(t, tt.expected, result)
+				println("Expected result:", tt.expected, "got:", result)
+			}
 		})
 	}
 }

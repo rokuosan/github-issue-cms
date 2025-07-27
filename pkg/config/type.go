@@ -9,8 +9,9 @@ type Config struct {
 }
 
 type GitHubConfig struct {
-	Username   string `yaml:"username"`
-	Repository string `yaml:"repository"`
+	Username         string `yaml:"username"`
+	Repository       string `yaml:"repository"`
+	AllowedAuthors []string `yaml:"allowed_authors" mapstructure:"allowed_authors"`
 }
 
 type HugoConfig struct {
