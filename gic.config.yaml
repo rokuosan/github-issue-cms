@@ -1,8 +1,8 @@
 github:
-  username: 'Retasusan'
-  repository: 'github-issue-cms-articles'
+  username: 'rokuosan'
+  repository: 'github-issue-cms'
   allowed_authors:
-    - 'Retasusan'
+    - 'rokuosan'
 
 hugo:
   filename:
