@@ -1,6 +1,13 @@
 package converter_v2
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -72,4 +79,59 @@ func TestFindImages_Properties(t *testing.T) {
 	img := images[0]
 	assert.Equal(t, "https://example.com/image.png", string(img.Destination()))
 	assert.Equal(t, "title text", string(img.Title()))
+}
+
+func TestImage_Download(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/test-image.png", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("image data"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	t.Run("download image", func(t *testing.T) {
+		md := goldmark.New()
+		markdown := "![alt text](" + server.URL + "/test-image.png)"
+		source := []byte(markdown)
+		doc := md.Parser().Parse(text.NewReader(source))
+
+		images := FindImages(doc, source)
+		assert.Equal(t, 1, len(images))
+
+		img := images[0]
+		var buf []byte
+		writer := bytes.NewBuffer(buf)
+		ctx := context.Background()
+
+		err := img.Download(ctx, server.Client(), writer)
+		assert.NoError(t, err)
+		assert.Equal(t, "image data", writer.String())
+	})
+
+	t.Run("Download to temporary file", func(t *testing.T) {
+		md := goldmark.New()
+		markdown := "![alt text](" + server.URL + "/test-image.png)"
+		source := []byte(markdown)
+		doc := md.Parser().Parse(text.NewReader(source))
+
+		images := FindImages(doc, source)
+		assert.Equal(t, 1, len(images))
+
+		img := images[0]
+
+		filename := filepath.Join(t.TempDir(), "downloaded_image.png")
+		fmt.Println(filename)
+		file, err := os.Create(filename)
+		assert.NoError(t, err)
+		defer file.Close()
+
+		ctx := context.Background()
+		err = img.Download(ctx, server.Client(), file)
+		assert.NoError(t, err)
+
+		data, err := os.ReadFile(filename)
+		assert.NoError(t, err)
+		assert.Equal(t, "image data", string(data))
+	})
 }
