@@ -70,6 +70,6 @@ func TestFindImages_Properties(t *testing.T) {
 	assert.Equal(t, 1, len(images))
 
 	img := images[0]
-	assert.Equal(t, "https://example.com/image.png", string(img.Destination))
-	assert.Equal(t, "title text", string(img.Title))
+	assert.Equal(t, "https://example.com/image.png", string(img.Destination()))
+	assert.Equal(t, "title text", string(img.Title()))
 }
