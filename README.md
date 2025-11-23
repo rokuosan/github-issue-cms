@@ -1,5 +1,7 @@
 # GitHub Issue-based headless CMS for Hugo
 
+<a href="https://flatt.tech/oss/gmo/trampoline" target="_blank"><img src="https://flatt.tech/assets/images/badges/gmo-oss.svg" height="24px"/></a>
+
 A headless CMS for Hugo using GitHub Issues.
 
 Issues are treated as articles.
