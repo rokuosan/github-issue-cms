@@ -75,7 +75,7 @@ jobs:
 
       - name: Generate artifact attestation
         if: ${{ github.event_name == 'push' }}
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.docker_build.outputs.digest }}
