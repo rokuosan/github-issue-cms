@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -143,6 +144,19 @@ func (c *converterImpl) IssueToArticle(issue *github.Issue) *Article {
 	if issue.IsPullRequest() {
 		return nil
 	}
+
+	if c.config.GitHub != nil && len(c.config.GitHub.AllowedAuthors) > 0 {
+		author := ""
+		if issue.User != nil {
+			author = issue.GetUser().GetLogin()
+		}
+		allowed := slices.Contains(c.config.GitHub.AllowedAuthors, author)
+		if !allowed {
+			slog.Debug(fmt.Sprintf("Author '%s' is not allowed. Skipping issue #%d", author, issue.GetNumber()))
+			return nil
+		}
+	}
+
 	num := strconv.Itoa(issue.GetNumber())
 	slog.Debug("Converting #" + num + "...")
 

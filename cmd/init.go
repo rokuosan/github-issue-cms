@@ -20,6 +20,9 @@ var initCmd = &cobra.Command{
 		if repository := cmd.Flag("repository").Value.String(); repository != "<YOUR_REPOSITORY>" {
 			viper.Set("github.repository", repository)
 		}
+		if allowedAuthors := cmd.Flag("allowed_authors").Value.String(); allowedAuthors != "<YOUR_ALLOWED_AUTHORS>" {
+			viper.Set("github.allowed_authors", allowedAuthors)
+		}
 
 		if err := viper.WriteConfig(); err != nil {
 			panic(err)
@@ -32,4 +35,5 @@ func init() {
 
 	initCmd.Flags().StringP("username", "u", "<YOUR_USERNAME>", "GitHub username")
 	initCmd.Flags().StringP("repository", "r", "<YOUR_REPOSITORY>", "GitHub repository")
+	initCmd.Flags().StringP("allowed_authors", "a", "<YOUR_ALLOWED_AUTHORS>", "Comma-separated list of allowed authors")
 }

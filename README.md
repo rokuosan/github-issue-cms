@@ -26,6 +26,8 @@ Create a YAML file named ``gic.config.yaml`` and write your credentials.
 github:
   username: '<YOUR_GITHUB_USERNAME>'
   repository: '<YOUR_GITHUB_REPOSITORY>'
+  allowed_authors:
+    - '<ALLOWED_AUTHOR_FOR_ISSUE>'
 
 hugo:
   filename:
@@ -115,3 +117,23 @@ jobs:
 Congratulations.
 
 Your Hugo site will automatically deployed when a Issue is closed or reopened.
+
+## Usage
+### Generate articles
+
+```bash
+$ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
+```
+
+### Set allowed authors
+You can set allowed authors in the `gic.config.yaml` file. This is useful to filter issues by author.
+For example, if you want to allow only specific users, in this example, `rokuosan`, to create articles, you can set it like this:
+```yaml
+github:
+  username: '<YOUR_GITHUB_USERNAME>'
+  repository: '<YOUR_GITHUB_REPOSITORY>'
+  allowed_authors:
+    - 'rokuosan'
+```
+Now, only issues created by `rokuosan` will be converted to articles.
+In default, all issues are allowed.
