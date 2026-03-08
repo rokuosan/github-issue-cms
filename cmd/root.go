@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/rokuosan/github-issue-cms/cmd/generate"
 	"github.com/spf13/cobra"
 )
 
@@ -29,4 +30,6 @@ func Execute() {
 func init() {
 	// Debug
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Debug mode")
+
+	rootCmd.AddCommand(generate.Command())
 }
