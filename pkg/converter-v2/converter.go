@@ -10,7 +10,12 @@ import (
 
 var defaultGitHubClient = github.NewClient(http.DefaultClient)
 
-type Converter interface{}
+type Converter interface {
+	HTTPClient() *http.Client
+	GitHubClient() *github.Client
+
+	GetIssues(ctx context.Context, options GetIssuesOptions) ([]*github.Issue, error)
+}
 type Option func(*converterImpl)
 
 type converterImpl struct {
@@ -89,7 +94,11 @@ func (c *converterImpl) GitHubClient() *github.Client {
 	return defaultGitHubClient.WithAuthToken(c.Token)
 }
 
-func (c *converterImpl) GetIssues(ctx context.Context) ([]*github.Issue, error) {
+type GetIssuesOptions struct {
+	IgnorePullRequests bool
+}
+
+func (c *converterImpl) GetIssues(ctx context.Context, options GetIssuesOptions) ([]*github.Issue, error) {
 	if err := c.CheckRequirements(); err != nil {
 		return nil, err
 	}
@@ -97,43 +106,42 @@ func (c *converterImpl) GetIssues(ctx context.Context) ([]*github.Issue, error) 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	issues := []*github.Issue{}
-	issues, err := c.getIssuesRecursively(ctx, issues, 1)
-	if err != nil {
-		return nil, err
-	}
-
-	return issues, nil
+	return c.getIssues(ctx, options)
 }
 
-func (c *converterImpl) getIssuesRecursively(ctx context.Context, current []*github.Issue, page int) ([]*github.Issue, error) {
-	issues, resp, err := c.getIssuesByPage(ctx, page)
-	if err != nil {
-		return nil, err
-	}
-	current = append(current, issues...)
-	if resp.NextPage <= 0 {
-		return current, nil
-	}
-
-	return c.getIssuesRecursively(ctx, current, resp.NextPage)
-}
-
-func (c *converterImpl) getIssuesByPage(ctx context.Context, page int) ([]*github.Issue, *github.Response, error) {
-	issues, resp, err := c.GitHubClient().Issues.ListByRepo(
-		ctx,
-		c.Username,
-		c.Repository,
-		&github.IssueListByRepoOptions{
-			State: "all",
-			ListOptions: github.ListOptions{
-				PerPage: 200,
-				Page:    page,
+func (c *converterImpl) getIssues(ctx context.Context, options GetIssuesOptions) ([]*github.Issue, error) {
+	all := []*github.Issue{}
+	page := 1
+	for {
+		issues, resp, err := c.GitHubClient().Issues.ListByRepo(
+			ctx,
+			c.Username,
+			c.Repository,
+			&github.IssueListByRepoOptions{
+				State: "all",
+				ListOptions: github.ListOptions{
+					PerPage: 200,
+					Page:    page,
+				},
 			},
-		},
-	)
-	if err != nil {
-		return nil, nil, err
+		)
+		if err != nil {
+			return nil, err
+		}
+		if options.IgnorePullRequests {
+			filtered := make([]*github.Issue, 0, len(issues))
+			for _, issue := range issues {
+				if issue.PullRequestLinks != nil {
+					continue
+				}
+				filtered = append(filtered, issue)
+			}
+			issues = filtered
+		}
+		all = append(all, issues...)
+		if resp.NextPage <= 0 {
+			return all, nil
+		}
+		page = resp.NextPage
 	}
-	return issues, resp, nil
 }

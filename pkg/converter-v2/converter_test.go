@@ -168,6 +168,7 @@ func Test_GetIssues(t *testing.T) {
 	tests := []struct {
 		name           string
 		options        []Option
+		getIssuesOpts  GetIssuesOptions
 		mockHandler    func(w http.ResponseWriter, r *http.Request)
 		wantErr        bool
 		wantIssueCount int
@@ -178,6 +179,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
+			getIssuesOpts: GetIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/repos/owner/repo/issues", r.URL.Path)
 				assert.Equal(t, "GET", r.Method)
@@ -207,6 +209,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
+			getIssuesOpts: GetIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/repos/owner/repo/issues", r.URL.Path)
 				page := r.URL.Query().Get("page")
@@ -239,10 +242,73 @@ func Test_GetIssues(t *testing.T) {
 			wantIssueCount: 2,
 		},
 		{
+			name: "ignore pull requests",
+			options: []Option{
+				WithToken("test-token"),
+				WithRepository("owner", "repo"),
+			},
+			getIssuesOpts: GetIssuesOptions{IgnorePullRequests: true},
+			mockHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[
+					{
+						"id": 1,
+						"number": 1,
+						"title": "Issue",
+						"state": "open"
+					},
+					{
+						"id": 2,
+						"number": 2,
+						"title": "PR",
+						"state": "open",
+						"pull_request": {
+							"url": "https://api.github.com/repos/owner/repo/pulls/2"
+						}
+					}
+				]`))
+			},
+			wantErr:        false,
+			wantIssueCount: 1,
+		},
+		{
+			name: "include pull requests when not ignored",
+			options: []Option{
+				WithToken("test-token"),
+				WithRepository("owner", "repo"),
+			},
+			getIssuesOpts: GetIssuesOptions{IgnorePullRequests: false},
+			mockHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[
+					{
+						"id": 1,
+						"number": 1,
+						"title": "Issue",
+						"state": "open"
+					},
+					{
+						"id": 2,
+						"number": 2,
+						"title": "PR",
+						"state": "open",
+						"pull_request": {
+							"url": "https://api.github.com/repos/owner/repo/pulls/2"
+						}
+					}
+				]`))
+			},
+			wantErr:        false,
+			wantIssueCount: 2,
+		},
+		{
 			name: "missing token",
 			options: []Option{
 				WithRepository("owner", "repo"),
 			},
+			getIssuesOpts: GetIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
@@ -253,6 +319,7 @@ func Test_GetIssues(t *testing.T) {
 			options: []Option{
 				WithToken("test-token"),
 			},
+			getIssuesOpts: GetIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
@@ -264,6 +331,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
+			getIssuesOpts: GetIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(`{"message": "Bad credentials"}`))
@@ -290,7 +358,7 @@ func Test_GetIssues(t *testing.T) {
 			c := NewConverter(options...).(*converterImpl)
 
 			// Execute
-			issues, err := c.GetIssues(context.Background())
+			issues, err := c.GetIssues(context.Background(), tt.getIssuesOpts)
 
 			// Assert
 			if tt.wantErr {
@@ -324,12 +392,12 @@ func Test_GetIssues_WithNilContext(t *testing.T) {
 	).(*converterImpl)
 
 	ctx := context.Background()
-	issues, err := c.GetIssues(ctx)
+	issues, err := c.GetIssues(ctx, GetIssuesOptions{})
 	require.NoError(t, err)
 	assert.Len(t, issues, 1)
 }
 
-func Test_getIssuesByPage(t *testing.T) {
+func Test_getIssues(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
 		page := r.URL.Query().Get("page")
@@ -357,10 +425,9 @@ func Test_getIssuesByPage(t *testing.T) {
 		WithGitHubClient(ghClient),
 	).(*converterImpl)
 
-	issues, resp, err := c.getIssuesByPage(context.Background(), 1)
+	issues, err := c.getIssues(context.Background(), GetIssuesOptions{})
 	require.NoError(t, err)
 	assert.Len(t, issues, 1)
-	assert.NotNil(t, resp)
 }
 
 // Helper function for tests
