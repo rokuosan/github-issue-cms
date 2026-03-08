@@ -1,11 +1,13 @@
 package converter_v2
 
 import (
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-github/v67/github"
+	"gopkg.in/yaml.v3"
 )
 
 func body(t *testing.T, frontMatter, content string) string {
@@ -408,4 +410,180 @@ func TestIssueArticle_Tags(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIssueArticle_FrontMatter(t *testing.T) {
+	t.Run("preserves markdown front matter and merges issue attributes", func(t *testing.T) {
+		issue := &github.Issue{
+			Title: github.String("Issue Title"),
+			User:  &github.User{Login: github.String("issue-user")},
+			CreatedAt: &github.Timestamp{
+				Time: time.Date(2025, 1, 11, 0, 0, 0, 0, time.UTC),
+			},
+			Labels: []*github.Label{
+				{Name: github.String("shared")},
+				{Name: github.String("bug")},
+			},
+			Milestone: &github.Milestone{
+				Title: github.String("Milestone Category"),
+			},
+			Body: github.String(body(t, `title: Front Title
+author: Front Author
+categories:
+  - Front
+  - Secondary
+date: 2025-01-10
+draft: true
+tags:
+  - frontend
+  - shared
+foo: bar`, "Body")),
+		}
+		article, err := NewIssueArticle(Markdown, issue)
+		if err != nil {
+			t.Fatalf("Failed to create IssueArticle: %v", err)
+		}
+
+		fm, err := article.FrontMatter()
+		if err != nil {
+			t.Fatalf("Failed to get front matter: %v", err)
+		}
+		var got map[string]any
+		if err := yaml.Unmarshal([]byte(fm), &got); err != nil {
+			t.Fatalf("Failed to unmarshal front matter: %v", err)
+		}
+
+		if got["title"] != "Front Title" {
+			t.Errorf("Expected title %q, got %v", "Front Title", got["title"])
+		}
+		if got["author"] != "Front Author" {
+			t.Errorf("Expected author %q, got %v", "Front Author", got["author"])
+		}
+		categories, ok := got["categories"].([]any)
+		if !ok || len(categories) != 2 || categories[0] != "Front" || categories[1] != "Secondary" {
+			t.Errorf("Expected categories [Front Secondary], got %v", got["categories"])
+		}
+		if draft, ok := got["draft"].(bool); !ok || draft != true {
+			t.Errorf("Expected draft %v, got %v", true, got["draft"])
+		}
+		if got["foo"] != "bar" {
+			t.Errorf("Expected custom front matter value, got %v", got["foo"])
+		}
+		date := dateFromFrontMatterValue(t, got["date"])
+		if !date.Equal(time.Date(2025, 1, 10, 0, 0, 0, 0, time.UTC)) {
+			t.Errorf("Expected date 2025-01-10T00:00:00Z, got %v", date)
+		}
+		actualTags := flattenTags(t, got["tags"])
+		expectedTags := []string{"bug", "frontend", "shared"}
+		if !compareStringSlices(actualTags, expectedTags) {
+			t.Errorf("Expected tags %v, got %v", expectedTags, actualTags)
+		}
+	})
+
+	t.Run("fills missing fields from issue and milestone", func(t *testing.T) {
+		createdAt := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+		closedAt := time.Date(2025, 1, 2, 13, 30, 0, 0, time.UTC)
+		issue := &github.Issue{
+			Title: github.String("Fallback Title"),
+			User:  &github.User{Login: github.String("issue-user")},
+			State: github.String("closed"),
+			Labels: []*github.Label{
+				{Name: github.String("bug")},
+				{Name: github.String("feature")},
+			},
+			Milestone: &github.Milestone{
+				Title: github.String("Milestone"),
+			},
+			CreatedAt: &github.Timestamp{Time: createdAt},
+			ClosedAt:  &github.Timestamp{Time: closedAt},
+			Body:      github.String("Body"),
+		}
+		article, err := NewIssueArticle(Markdown, issue)
+		if err != nil {
+			t.Fatalf("Failed to create IssueArticle: %v", err)
+		}
+
+		fm, err := article.FrontMatter()
+		if err != nil {
+			t.Fatalf("Failed to get front matter: %v", err)
+		}
+		var got map[string]any
+		if err := yaml.Unmarshal([]byte(fm), &got); err != nil {
+			t.Fatalf("Failed to unmarshal front matter: %v", err)
+		}
+
+		if got["title"] != "Fallback Title" {
+			t.Errorf("Expected title %q, got %v", "Fallback Title", got["title"])
+		}
+		if got["author"] != "issue-user" {
+			t.Errorf("Expected author %q, got %v", "issue-user", got["author"])
+		}
+		if got["category"] != "Milestone" {
+			t.Errorf("Expected category %q, got %v", "Milestone", got["category"])
+		}
+		if draft, ok := got["draft"].(bool); !ok || draft != true {
+			t.Errorf("Expected draft %v, got %v", true, got["draft"])
+		}
+		date := dateFromFrontMatterValue(t, got["date"])
+		if !date.Equal(closedAt) {
+			t.Errorf("Expected date %v, got %v", closedAt, date)
+		}
+
+		actualTags := flattenTags(t, got["tags"])
+		expectedTags := []string{"bug", "feature"}
+		if !compareStringSlices(actualTags, expectedTags) {
+			t.Errorf("Expected tags %v, got %v", expectedTags, actualTags)
+		}
+	})
+}
+
+func flattenTags(t *testing.T, value any) []string {
+	t.Helper()
+	raw, ok := value.([]any)
+	if !ok {
+		t.Fatalf("Expected tags to be []any, got %T", value)
+	}
+	tags := make([]string, 0, len(raw))
+	for _, value := range raw {
+		tag, ok := value.(string)
+		if !ok {
+			t.Fatalf("Expected tag string, got %T", value)
+		}
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	return tags
+}
+
+func compareStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func dateFromFrontMatterValue(t *testing.T, value any) time.Time {
+	t.Helper()
+	switch date := value.(type) {
+	case time.Time:
+		return date
+	case string:
+		parsed, err := time.Parse(time.RFC3339, date)
+		if err == nil {
+			return parsed
+		}
+		parsed, err = time.Parse(time.DateOnly, date)
+		if err == nil {
+			return parsed
+		}
+		t.Fatalf("Failed to parse date %q", date)
+	default:
+		t.Fatalf("Expected date string or time.Time, got %T", value)
+	}
+	return time.Time{}
 }

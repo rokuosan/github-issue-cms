@@ -1,12 +1,15 @@
 package converter_v2
 
 import (
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v67/github"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
+	"gopkg.in/yaml.v3"
 )
 
 type Article interface {
@@ -176,4 +179,44 @@ func (a *IssueArticle) Tags() []string {
 		tagList = append(tagList, tag)
 	}
 	return tagList
+}
+
+// FrontMatter returns merged front matter as YAML:
+// - start with front matter defined in markdown
+// - fill missing keys from issue values (title, author, category, date, draft, tags)
+func (a *IssueArticle) FrontMatter() (string, error) {
+	merged := map[string]any{}
+	if a.frontMatter != nil {
+		for k, v := range a.frontMatter.ParseYAML() {
+			merged[k] = v
+		}
+	}
+
+	// Merge tags from issue labels even when front matter defines tags.
+	merged["tags"] = a.Tags()
+	sort.Strings(merged["tags"].([]string))
+
+	if _, ok := merged["title"]; !ok {
+		merged["title"] = a.Title()
+	}
+	if _, ok := merged["author"]; !ok {
+		merged["author"] = a.Author()
+	}
+	if _, ok := merged["category"]; !ok {
+		if _, exists := merged["categories"]; !exists {
+			merged["category"] = a.Category()
+		}
+	}
+	if _, ok := merged["date"]; !ok {
+		merged["date"] = a.Date().Format(time.RFC3339)
+	}
+	if _, ok := merged["draft"]; !ok {
+		merged["draft"] = a.IsDraft()
+	}
+
+	data, err := yaml.Marshal(merged)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }
