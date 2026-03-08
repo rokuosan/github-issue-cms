@@ -1,6 +1,7 @@
 package converter_v2
 
 import (
+	"bytes"
 	"sort"
 	"strings"
 	"testing"
@@ -535,6 +536,64 @@ foo: bar`, "Body")),
 			t.Errorf("Expected tags %v, got %v", expectedTags, actualTags)
 		}
 	})
+}
+
+func TestIssueArticle_Export(t *testing.T) {
+	issue := &github.Issue{
+		Title: github.String("Export Title"),
+		User:  &github.User{Login: github.String("author-name")},
+		Labels: []*github.Label{
+			{Name: github.String("tag-b")},
+			{Name: github.String("tag-a")},
+		},
+		Body: github.String(body(t, `title: Export Title
+author: Front Author`, "This is the content.\n\nSecond line.")),
+	}
+	article, err := NewIssueArticle(Markdown, issue)
+	if err != nil {
+		t.Fatalf("Failed to create IssueArticle: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := article.Export(&buf); err != nil {
+		t.Fatalf("Expected export to succeed, got error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.HasPrefix(out, "---\n") {
+		t.Fatalf("Expected output to start with front matter separator, got %q", out)
+	}
+
+	parts := strings.SplitN(out, "---\n", 3)
+	if len(parts) != 3 {
+		t.Fatalf("Expected Hugo-style front matter section in output, got %q", out)
+	}
+	if parts[0] != "" {
+		t.Fatalf("Expected empty prefix before first separator, got %q", parts[0])
+	}
+	if parts[2] == "" {
+		t.Fatalf("Expected content section to exist")
+	}
+
+	var fm map[string]any
+	if err := yaml.Unmarshal([]byte(parts[1]), &fm); err != nil {
+		t.Fatalf("Failed to unmarshal exported front matter: %v", err)
+	}
+	if fm["title"] != "Export Title" {
+		t.Errorf("Expected exported title %q, got %v", "Export Title", fm["title"])
+	}
+	if fm["author"] != "Front Author" {
+		t.Errorf("Expected exported author %q, got %v", "Front Author", fm["author"])
+	}
+	if tags, ok := fm["tags"].([]any); !ok || len(tags) != 2 {
+		t.Fatalf("Expected 2 tags in exported front matter, got %v", fm["tags"])
+	}
+
+	content := strings.TrimPrefix(parts[2], "\n")
+	content = strings.TrimPrefix(content, "\n")
+	if content != "This is the content.\n\nSecond line." {
+		t.Fatalf("Expected content %q, got %q", "This is the content.\n\nSecond line.", content)
+	}
 }
 
 func flattenTags(t *testing.T, value any) []string {

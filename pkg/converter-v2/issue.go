@@ -1,6 +1,8 @@
 package converter_v2
 
 import (
+	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -13,6 +15,7 @@ import (
 )
 
 type Article interface {
+	ID() string
 	Title() string
 	Content() string
 	Date() time.Time
@@ -54,6 +57,10 @@ func NewIssueArticle(markdown goldmark.Markdown, issue *github.Issue) (*IssueArt
 		frontMatter: fm,
 		images:      FindImages(doc, source),
 	}, nil
+}
+
+func (a *IssueArticle) ID() string {
+	return fmt.Sprintf("%d", a.GetID())
 }
 
 func (a *IssueArticle) Title() string {
@@ -219,4 +226,21 @@ func (a *IssueArticle) FrontMatter() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(data)), nil
+}
+
+// Export writes Hugo-style markdown to the provided writer.
+// The format is:
+// ---
+// <front matter yaml>
+// ---
+//
+// <content>
+func (a *IssueArticle) Export(w io.Writer) error {
+	fm, err := a.FrontMatter()
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(w, "---\n%s\n---\n\n%s", fm, a.Content())
+	return err
 }
