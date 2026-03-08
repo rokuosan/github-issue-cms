@@ -358,17 +358,21 @@ func Test_WalkIssues(t *testing.T) {
 			c := NewConverter(options...).(*converterImpl)
 
 			// Execute
-			var gotIssues []*github.Issue
-			err := c.WalkIssues(context.Background(), tt.getIssuesOpts, func(issues []*github.Issue) error {
+			gotIssues := make([]*github.Issue, 0)
+			var gotErr error
+			for issues, err := range c.WalkIssues(context.Background(), tt.getIssuesOpts) {
+				if err != nil {
+					gotErr = err
+					break
+				}
 				gotIssues = append(gotIssues, issues...)
-				return nil
-			})
+			}
 
 			// Assert
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, gotErr)
 			} else {
-				require.NoError(t, err)
+				require.NoError(t, gotErr)
 				assert.Len(t, gotIssues, tt.wantIssueCount)
 			}
 		})
@@ -396,38 +400,13 @@ func Test_WalkIssues_WithNilContext(t *testing.T) {
 	).(*converterImpl)
 
 	var ctx context.Context
-	err := c.WalkIssues(ctx, WalkIssuesOptions{}, func(issues []*github.Issue) error {
-		return nil
-	})
-	require.NoError(t, err)
-}
-
-func Test_WalkIssues_WithNilCallback(t *testing.T) {
-	requestCount := 0
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"id": 1, "number": 1, "title": "Test Issue"}]`))
-	})
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	httpClient := &http.Client{}
-	ghClient := github.NewClient(httpClient)
-	ghClient.BaseURL = must(ghClient.BaseURL.Parse(server.URL + "/"))
-
-	c := NewConverter(
-		WithToken("test-token"),
-		WithRepository("owner", "repo"),
-		WithGitHubClient(ghClient),
-	).(*converterImpl)
-
-	err := c.WalkIssues(context.Background(), WalkIssuesOptions{}, nil)
-	require.NoError(t, err)
-	assert.Equal(t, 0, requestCount)
+	var gotErr error
+	for _, gotErr = range c.WalkIssues(ctx, WalkIssuesOptions{}) {
+		if gotErr != nil {
+			break
+		}
+	}
+	require.NoError(t, gotErr)
 }
 
 func Test_WalkIssues_WithPerPage(t *testing.T) {
@@ -453,12 +432,16 @@ func Test_WalkIssues_WithPerPage(t *testing.T) {
 		WithGitHubClient(ghClient),
 	).(*converterImpl)
 
+	var gotErr error
 	got := make([]*github.Issue, 0)
-	err := c.WalkIssues(context.Background(), WalkIssuesOptions{PerPage: 10}, func(issues []*github.Issue) error {
+	for issues, err := range c.WalkIssues(context.Background(), WalkIssuesOptions{PerPage: 10}) {
+		if err != nil {
+			gotErr = err
+			break
+		}
 		got = append(got, issues...)
-		return nil
-	})
-	require.NoError(t, err)
+	}
+	require.NoError(t, gotErr)
 	assert.Len(t, got, 1)
 }
 
@@ -505,13 +488,17 @@ func Test_WalkIssues_WithMultiplePages(t *testing.T) {
 	).(*converterImpl)
 
 	gotNumbers := make([]int, 0)
-	err := c.WalkIssues(context.Background(), WalkIssuesOptions{}, func(issues []*github.Issue) error {
+	var walkErr error
+	for issues, err := range c.WalkIssues(context.Background(), WalkIssuesOptions{}) {
+		if err != nil {
+			walkErr = err
+			break
+		}
 		for _, issue := range issues {
 			gotNumbers = append(gotNumbers, issue.GetNumber())
 		}
-		return nil
-	})
-	require.NoError(t, err)
+	}
+	require.NoError(t, walkErr)
 	assert.Equal(t, []int{1, 2, 3}, gotNumbers)
 	assert.Equal(t, 1, requestedPages["1"])
 	assert.Equal(t, 1, requestedPages["2"])

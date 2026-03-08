@@ -3,6 +3,7 @@ package converter_v2
 import (
 	"context"
 	"errors"
+	"iter"
 	"log/slog"
 	"net/http"
 
@@ -18,7 +19,7 @@ type Converter interface {
 	HTTPClient() *http.Client
 	GitHubClient() *github.Client
 
-	WalkIssues(ctx context.Context, options WalkIssuesOptions, onPage func([]*github.Issue) error) error
+	WalkIssues(ctx context.Context, options WalkIssuesOptions) iter.Seq2[[]*github.Issue, error]
 }
 type Option func(*converterImpl)
 
@@ -103,51 +104,54 @@ type WalkIssuesOptions struct {
 	PerPage            int
 }
 
-func (c *converterImpl) WalkIssues(ctx context.Context, options WalkIssuesOptions, onPage func([]*github.Issue) error) error {
-	if err := c.CheckRequirements(); err != nil {
-		return err
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	perPage := options.PerPage
-	if perPage <= 0 {
-		perPage = 200
-	}
-	if onPage == nil {
-		return nil
-	}
-
-	logger := defaultLogger("walkIssues")
-	logger.Debug(
-		"start walking issues",
-		"owner", c.Username,
-		"repo", c.Repository,
-		"ignore_pull_requests", options.IgnorePullRequests,
-		"per_page", perPage,
-	)
-
-	page := 1
-	for {
-		issues, resp, err := c.getIssuesByPage(ctx, page, perPage)
-		if err != nil {
-			logger.Debug("failed to fetch page", "page", page, "err", err.Error())
-			return err
+func (c *converterImpl) WalkIssues(ctx context.Context, options WalkIssuesOptions) iter.Seq2[[]*github.Issue, error] {
+	return func(yield func([]*github.Issue, error) bool) {
+		if err := c.CheckRequirements(); err != nil {
+			yield(nil, err)
+			return
 		}
 
-		filtered := c.filterIssues(issues, options)
-		logger.Debug("fetched page", "page", page, "count", len(filtered))
-		if len(filtered) > 0 {
-			if err := onPage(filtered); err != nil {
-				return err
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		perPage := options.PerPage
+		if perPage <= 0 {
+			perPage = 200
+		}
+
+		logger := defaultLogger("walkIssues")
+		logger.Debug(
+			"start walking issues",
+			"owner", c.Username,
+			"repo", c.Repository,
+			"ignore_pull_requests", options.IgnorePullRequests,
+			"per_page", perPage,
+		)
+
+		page := 1
+		for {
+			issues, resp, err := c.getIssuesByPage(ctx, page, perPage)
+			if err != nil {
+				logger.Debug("failed to fetch page", "page", page, "err", err.Error())
+				if !yield(nil, err) {
+					return
+				}
+				return
 			}
-		}
 
-		if resp.NextPage <= 0 {
-			return nil
+			filtered := c.filterIssues(issues, options)
+			logger.Debug("fetched page", "page", page, "count", len(filtered))
+			if len(filtered) > 0 {
+				if !yield(filtered, nil) {
+					return
+				}
+			}
+
+			if resp.NextPage <= 0 {
+				return
+			}
+			page = resp.NextPage
 		}
-		page = resp.NextPage
 	}
 }
 
