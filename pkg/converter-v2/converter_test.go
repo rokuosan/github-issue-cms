@@ -164,11 +164,11 @@ func Test_GitHubClient(t *testing.T) {
 	})
 }
 
-func Test_GetIssues(t *testing.T) {
+func Test_WalkIssues(t *testing.T) {
 	tests := []struct {
 		name           string
 		options        []Option
-		getIssuesOpts  GetIssuesOptions
+		getIssuesOpts  WalkIssuesOptions
 		mockHandler    func(w http.ResponseWriter, r *http.Request)
 		wantErr        bool
 		wantIssueCount int
@@ -179,7 +179,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
-			getIssuesOpts: GetIssuesOptions{},
+			getIssuesOpts: WalkIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/repos/owner/repo/issues", r.URL.Path)
 				assert.Equal(t, "GET", r.Method)
@@ -209,7 +209,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
-			getIssuesOpts: GetIssuesOptions{},
+			getIssuesOpts: WalkIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/repos/owner/repo/issues", r.URL.Path)
 				page := r.URL.Query().Get("page")
@@ -247,7 +247,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
-			getIssuesOpts: GetIssuesOptions{IgnorePullRequests: true},
+			getIssuesOpts: WalkIssuesOptions{IgnorePullRequests: true},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
@@ -278,7 +278,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
-			getIssuesOpts: GetIssuesOptions{IgnorePullRequests: false},
+			getIssuesOpts: WalkIssuesOptions{IgnorePullRequests: false},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
@@ -308,7 +308,7 @@ func Test_GetIssues(t *testing.T) {
 			options: []Option{
 				WithRepository("owner", "repo"),
 			},
-			getIssuesOpts: GetIssuesOptions{},
+			getIssuesOpts: WalkIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
@@ -319,7 +319,7 @@ func Test_GetIssues(t *testing.T) {
 			options: []Option{
 				WithToken("test-token"),
 			},
-			getIssuesOpts: GetIssuesOptions{},
+			getIssuesOpts: WalkIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
@@ -331,7 +331,7 @@ func Test_GetIssues(t *testing.T) {
 				WithToken("test-token"),
 				WithRepository("owner", "repo"),
 			},
-			getIssuesOpts: GetIssuesOptions{},
+			getIssuesOpts: WalkIssuesOptions{},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(`{"message": "Bad credentials"}`))
@@ -358,20 +358,24 @@ func Test_GetIssues(t *testing.T) {
 			c := NewConverter(options...).(*converterImpl)
 
 			// Execute
-			issues, err := c.GetIssues(context.Background(), tt.getIssuesOpts)
+			var gotIssues []*github.Issue
+			err := c.WalkIssues(context.Background(), tt.getIssuesOpts, func(issues []*github.Issue) error {
+				gotIssues = append(gotIssues, issues...)
+				return nil
+			})
 
 			// Assert
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Len(t, issues, tt.wantIssueCount)
+				assert.Len(t, gotIssues, tt.wantIssueCount)
 			}
 		})
 	}
 }
 
-func Test_GetIssues_WithNilContext(t *testing.T) {
+func Test_WalkIssues_WithNilContext(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -391,13 +395,130 @@ func Test_GetIssues_WithNilContext(t *testing.T) {
 		WithGitHubClient(ghClient),
 	).(*converterImpl)
 
-	ctx := context.Background()
-	issues, err := c.GetIssues(ctx, GetIssuesOptions{})
+	var ctx context.Context
+	err := c.WalkIssues(ctx, WalkIssuesOptions{}, func(issues []*github.Issue) error {
+		return nil
+	})
 	require.NoError(t, err)
-	assert.Len(t, issues, 1)
 }
 
-func Test_getIssues(t *testing.T) {
+func Test_WalkIssues_WithNilCallback(t *testing.T) {
+	requestCount := 0
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"id": 1, "number": 1, "title": "Test Issue"}]`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	ghClient := github.NewClient(httpClient)
+	ghClient.BaseURL = must(ghClient.BaseURL.Parse(server.URL + "/"))
+
+	c := NewConverter(
+		WithToken("test-token"),
+		WithRepository("owner", "repo"),
+		WithGitHubClient(ghClient),
+	).(*converterImpl)
+
+	err := c.WalkIssues(context.Background(), WalkIssuesOptions{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 0, requestCount)
+}
+
+func Test_WalkIssues_WithPerPage(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
+		perPage := r.URL.Query().Get("per_page")
+		assert.Equal(t, "10", perPage)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"id": 1, "number": 1, "title": "Test Issue"}]`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	ghClient := github.NewClient(httpClient)
+	ghClient.BaseURL = must(ghClient.BaseURL.Parse(server.URL + "/"))
+
+	c := NewConverter(
+		WithToken("test-token"),
+		WithRepository("owner", "repo"),
+		WithGitHubClient(ghClient),
+	).(*converterImpl)
+
+	got := make([]*github.Issue, 0)
+	err := c.WalkIssues(context.Background(), WalkIssuesOptions{PerPage: 10}, func(issues []*github.Issue) error {
+		got = append(got, issues...)
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Len(t, got, 1)
+}
+
+func Test_WalkIssues_WithMultiplePages(t *testing.T) {
+	requestedPages := map[string]int{}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		if page == "" {
+			page = "1"
+		}
+
+		requestedPages[page]++
+
+		w.Header().Set("Content-Type", "application/json")
+		switch page {
+		case "1":
+			w.Header().Set("Link", `<https://api.github.com/repos/owner/repo/issues?page=2>; rel="next"`)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`[{"id": 1, "number": 1, "title": "Issue 1"}]`))
+		case "2":
+			w.Header().Set("Link", `<https://api.github.com/repos/owner/repo/issues?page=3>; rel="next", <https://api.github.com/repos/owner/repo/issues?page=3>; rel="last"`)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`[{"id": 2, "number": 2, "title": "Issue 2"}]`))
+		case "3":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`[{"id": 3, "number": 3, "title": "Issue 3"}]`))
+		default:
+			t.Fatalf("unexpected page: %s", page)
+		}
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	ghClient := github.NewClient(httpClient)
+	ghClient.BaseURL = must(ghClient.BaseURL.Parse(server.URL + "/"))
+
+	c := NewConverter(
+		WithToken("test-token"),
+		WithRepository("owner", "repo"),
+		WithGitHubClient(ghClient),
+	).(*converterImpl)
+
+	gotNumbers := make([]int, 0)
+	err := c.WalkIssues(context.Background(), WalkIssuesOptions{}, func(issues []*github.Issue) error {
+		for _, issue := range issues {
+			gotNumbers = append(gotNumbers, issue.GetNumber())
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []int{1, 2, 3}, gotNumbers)
+	assert.Equal(t, 1, requestedPages["1"])
+	assert.Equal(t, 1, requestedPages["2"])
+	assert.Equal(t, 1, requestedPages["3"])
+}
+
+func Test_getIssuesByPage(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/owner/repo/issues", func(w http.ResponseWriter, r *http.Request) {
 		page := r.URL.Query().Get("page")
@@ -425,7 +546,7 @@ func Test_getIssues(t *testing.T) {
 		WithGitHubClient(ghClient),
 	).(*converterImpl)
 
-	issues, err := c.getIssues(context.Background(), GetIssuesOptions{})
+	issues, _, err := c.getIssuesByPage(context.Background(), 1, 200)
 	require.NoError(t, err)
 	assert.Len(t, issues, 1)
 }

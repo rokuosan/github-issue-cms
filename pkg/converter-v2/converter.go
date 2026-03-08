@@ -3,18 +3,22 @@ package converter_v2
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/go-github/v67/github"
 )
 
 var defaultGitHubClient = github.NewClient(http.DefaultClient)
+var defaultLogger = func(method string) *slog.Logger {
+	return slog.Default().With("package", "converter-v2", "method", method)
+}
 
 type Converter interface {
 	HTTPClient() *http.Client
 	GitHubClient() *github.Client
 
-	GetIssues(ctx context.Context, options GetIssuesOptions) ([]*github.Issue, error)
+	WalkIssues(ctx context.Context, options WalkIssuesOptions, onPage func([]*github.Issue) error) error
 }
 type Option func(*converterImpl)
 
@@ -94,54 +98,95 @@ func (c *converterImpl) GitHubClient() *github.Client {
 	return defaultGitHubClient.WithAuthToken(c.Token)
 }
 
-type GetIssuesOptions struct {
+type WalkIssuesOptions struct {
 	IgnorePullRequests bool
+	PerPage            int
 }
 
-func (c *converterImpl) GetIssues(ctx context.Context, options GetIssuesOptions) ([]*github.Issue, error) {
+func (c *converterImpl) WalkIssues(ctx context.Context, options WalkIssuesOptions, onPage func([]*github.Issue) error) error {
 	if err := c.CheckRequirements(); err != nil {
-		return nil, err
+		return err
 	}
 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return c.getIssues(ctx, options)
-}
+	perPage := options.PerPage
+	if perPage <= 0 {
+		perPage = 200
+	}
+	if onPage == nil {
+		return nil
+	}
 
-func (c *converterImpl) getIssues(ctx context.Context, options GetIssuesOptions) ([]*github.Issue, error) {
-	all := []*github.Issue{}
+	logger := defaultLogger("walkIssues")
+	logger.Debug(
+		"start walking issues",
+		"owner", c.Username,
+		"repo", c.Repository,
+		"ignore_pull_requests", options.IgnorePullRequests,
+		"per_page", perPage,
+	)
+
 	page := 1
 	for {
-		issues, resp, err := c.GitHubClient().Issues.ListByRepo(
-			ctx,
-			c.Username,
-			c.Repository,
-			&github.IssueListByRepoOptions{
-				State: "all",
-				ListOptions: github.ListOptions{
-					PerPage: 200,
-					Page:    page,
-				},
-			},
-		)
+		issues, resp, err := c.getIssuesByPage(ctx, page, perPage)
 		if err != nil {
-			return nil, err
+			logger.Debug("failed to fetch page", "page", page, "err", err.Error())
+			return err
 		}
-		if options.IgnorePullRequests {
-			filtered := make([]*github.Issue, 0, len(issues))
-			for _, issue := range issues {
-				if issue.PullRequestLinks != nil {
-					continue
-				}
-				filtered = append(filtered, issue)
+
+		filtered := c.filterIssues(issues, options)
+		logger.Debug("fetched page", "page", page, "count", len(filtered))
+		if len(filtered) > 0 {
+			if err := onPage(filtered); err != nil {
+				return err
 			}
-			issues = filtered
 		}
-		all = append(all, issues...)
+
 		if resp.NextPage <= 0 {
-			return all, nil
+			return nil
 		}
 		page = resp.NextPage
 	}
+}
+
+func (c *converterImpl) getIssuesByPage(ctx context.Context, page int, perPage int) ([]*github.Issue, *github.Response, error) {
+	logger := defaultLogger("getIssuesByPage").With("page", page, "per_page", perPage)
+	logger.Debug("requesting issues page")
+
+	issues, resp, err := c.GitHubClient().Issues.ListByRepo(
+		ctx,
+		c.Username,
+		c.Repository,
+		&github.IssueListByRepoOptions{
+			State: "all",
+			ListOptions: github.ListOptions{
+				PerPage: perPage,
+				Page:    page,
+			},
+		},
+	)
+	if err != nil {
+		logger.Debug("request failed", "err", err.Error())
+		return nil, nil, err
+	}
+	logger.Debug("request succeeded", "count", len(issues), "next_page", resp.NextPage, "last_page", resp.LastPage)
+	return issues, resp, nil
+}
+
+func (c *converterImpl) filterIssues(issues []*github.Issue, options WalkIssuesOptions) []*github.Issue {
+	// Filter out pull requests by checking GitHub's issue field for pull request metadata.
+	if !options.IgnorePullRequests {
+		return issues
+	}
+
+	filtered := make([]*github.Issue, 0, len(issues))
+	for _, issue := range issues {
+		if issue.PullRequestLinks != nil {
+			continue
+		}
+		filtered = append(filtered, issue)
+	}
+	return filtered
 }
