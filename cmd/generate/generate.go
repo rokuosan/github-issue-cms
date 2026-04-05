@@ -85,7 +85,9 @@ func handleRun(cmd *cobra.Command, args []string) {
 			}
 			defer dest.Close()
 
-			if err := art.Export(dest); err != nil {
+			if err := art.Export(dest, converter_v2.ExportOptions{
+				AssetDirectory: config.CompileTimeTemplate(art.Date(), strings.ReplaceAll(conf.Hugo.Directory.Images, "[:id]", art.ID())),
+			}); err != nil {
 				slog.Error("Failed to export article", "error", err)
 				return
 			}

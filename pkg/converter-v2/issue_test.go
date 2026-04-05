@@ -2,6 +2,11 @@ package converter_v2
 
 import (
 	"bytes"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -555,7 +560,7 @@ author: Front Author`, "This is the content.\n\nSecond line.")),
 	}
 
 	var buf bytes.Buffer
-	if err := article.Export(&buf); err != nil {
+	if err := article.Export(&buf, ExportOptions{}); err != nil {
 		t.Fatalf("Expected export to succeed, got error: %v", err)
 	}
 
@@ -593,6 +598,204 @@ author: Front Author`, "This is the content.\n\nSecond line.")),
 	content = strings.TrimPrefix(content, "\n")
 	if content != "This is the content.\n\nSecond line." {
 		t.Fatalf("Expected content %q, got %q", "This is the content.\n\nSecond line.", content)
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (r roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return r(req)
+}
+
+func TestIssueArticle_Export_DownloadAndRewriteGitHubUserContent(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			responses := map[string]struct {
+				contentType string
+				body        string
+			}{
+				"/path/image.png": {
+					contentType: "image/png",
+					body:        "png-image",
+				},
+				"/animation.gif": {
+					contentType: "image/gif",
+					body:        "gif-image",
+				},
+			}
+			resp := responses[req.URL.Path]
+			if resp.body == "" {
+				return &http.Response{
+					StatusCode: http.StatusNotFound,
+					Status:     http.StatusText(http.StatusNotFound),
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader("")),
+					Request:    req,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Status:     http.StatusText(http.StatusOK),
+				Header:     http.Header{"Content-Type": []string{resp.contentType}},
+				Body:       io.NopCloser(strings.NewReader(resp.body)),
+				Request:    req,
+			}, nil
+		}),
+	}
+
+	issue := &github.Issue{
+		Title: github.String("Media Export"),
+		Body:  github.String(body(t, "", "![image](https://raw-user-images.githubusercontent.com/path/image.png)\n\n![gif](https://cdn.githubassets.githubusercontent.com/animation.gif)\n")),
+	}
+	article, err := NewIssueArticle(Markdown, issue)
+	if err != nil {
+		t.Fatalf("Failed to create IssueArticle: %v", err)
+	}
+	article.httpClient = client
+
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "issue.md")
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("Failed to create output file: %v", err)
+	}
+	defer outFile.Close()
+	if err := article.Export(outFile, ExportOptions{}); err != nil {
+		t.Fatalf("Expected export to succeed, got error: %v", err)
+	}
+
+	output, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+	out := string(output)
+	contentPart := strings.SplitN(out, "\n\n", 2)
+	if len(contentPart) != 2 {
+		t.Fatalf("Expected markdown body to exist, got %q", out)
+	}
+	content := contentPart[1]
+
+	if strings.Contains(content, "https://") {
+		t.Fatalf("Expected external githubusercontent URLs to be replaced, got %q", content)
+	}
+
+	assetsDir := filepath.Join(tmpDir, "assets")
+	entries, err := os.ReadDir(assetsDir)
+	if err != nil {
+		t.Fatalf("Failed to read assets directory: %v", err)
+	}
+	if len(entries) < 2 {
+		t.Fatalf("Expected at least 2 downloaded assets, got %d", len(entries))
+	}
+	re := regexp.MustCompile(`assets/[a-f0-9]+\.(png|gif)`)
+	if !re.MatchString(content) {
+		t.Fatalf("Expected content to reference asset files, got %q", content)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			t.Fatalf("Failed to read asset info: %v", err)
+		}
+		if info.Size() == 0 {
+			t.Fatalf("Expected downloaded asset %s to have content", entry.Name())
+		}
+	}
+}
+
+func TestIssueArticle_Export_WithAssetDirectoryOption(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			responses := map[string]struct {
+				contentType string
+				body        string
+			}{
+				"/path/custom.png": {
+					contentType: "image/png",
+					body:        "png-image",
+				},
+			}
+			resp := responses[req.URL.Path]
+			if resp.body == "" {
+				return &http.Response{
+					StatusCode: http.StatusNotFound,
+					Status:     http.StatusText(http.StatusNotFound),
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader("")),
+					Request:    req,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Status:     http.StatusText(http.StatusOK),
+				Header:     http.Header{"Content-Type": []string{resp.contentType}},
+				Body:       io.NopCloser(strings.NewReader(resp.body)),
+				Request:    req,
+			}, nil
+		}),
+	}
+
+	issue := &github.Issue{
+		Title: github.String("Custom Asset Export"),
+		Body:  github.String(body(t, "", "![image](https://raw-user-images.githubusercontent.com/path/custom.png)\n")),
+	}
+	article, err := NewIssueArticle(Markdown, issue)
+	if err != nil {
+		t.Fatalf("Failed to create IssueArticle: %v", err)
+	}
+	article.httpClient = client
+
+	rootDir := t.TempDir()
+	outputDir := filepath.Join(rootDir, "post")
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+	outPath := filepath.Join(outputDir, "issue.md")
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("Failed to create output file: %v", err)
+	}
+	defer outFile.Close()
+
+	assetDir := filepath.Join(rootDir, "assets")
+	if err := os.MkdirAll(assetDir, 0o755); err != nil {
+		t.Fatalf("Failed to create asset dir: %v", err)
+	}
+	if err := article.Export(outFile, ExportOptions{AssetDirectory: assetDir}); err != nil {
+		t.Fatalf("Expected export to succeed, got error: %v", err)
+	}
+
+	output, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+	out := string(output)
+	contentPart := strings.SplitN(out, "\n\n", 2)
+	if len(contentPart) != 2 {
+		t.Fatalf("Expected markdown body to exist, got %q", out)
+	}
+	content := contentPart[1]
+
+	if strings.Contains(content, "https://raw-user-images.githubusercontent.com/path/custom.png") {
+		t.Fatalf("Expected image URL to be replaced, got %q", content)
+	}
+	if !strings.Contains(content, "assets/") {
+		t.Fatalf("Expected image path to be under custom asset directory, got %q", content)
+	}
+
+	entries, err := os.ReadDir(assetDir)
+	if err != nil {
+		t.Fatalf("Failed to read asset dir: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("Expected one downloaded asset, got %d", len(entries))
+	}
+	if info, err := entries[0].Info(); err != nil {
+		t.Fatalf("Failed to read asset info: %v", err)
+	} else if info.Size() == 0 {
+		t.Fatalf("Expected downloaded asset to have content, got 0")
 	}
 }
 

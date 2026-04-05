@@ -3,6 +3,7 @@ package converter_v2
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -35,6 +36,13 @@ type IssueArticle struct {
 
 	frontMatter *FrontMatter
 	images      []Image
+	httpClient  *http.Client
+}
+
+type ExportOptions struct {
+	// AssetDirectory is the directory where downloaded media files are stored.
+	// AssetDirectory is used as-is and should be prepared by the caller.
+	AssetDirectory string
 }
 
 var _ Markdownable = (*IssueArticle)(nil)
@@ -56,6 +64,7 @@ func NewIssueArticle(markdown goldmark.Markdown, issue *github.Issue) (*IssueArt
 
 		frontMatter: fm,
 		images:      FindImages(doc, source),
+		httpClient:  http.DefaultClient,
 	}, nil
 }
 
@@ -229,18 +238,24 @@ func (a *IssueArticle) FrontMatter() (string, error) {
 }
 
 // Export writes Hugo-style markdown to the provided writer.
+// If ExportOptions.AssetDirectory is set, it is used as the media output directory.
 // The format is:
 // ---
 // <front matter yaml>
 // ---
 //
 // <content>
-func (a *IssueArticle) Export(w io.Writer) error {
+func (a *IssueArticle) Export(w io.Writer, options ExportOptions) error {
+
 	fm, err := a.FrontMatter()
 	if err != nil {
 		return err
 	}
+	content, err := a.exportedContent(w, options)
+	if err != nil {
+		return err
+	}
 
-	_, err = fmt.Fprintf(w, "---\n%s\n---\n\n%s", fm, a.Content())
+	_, err = fmt.Fprintf(w, "---\n%s\n---\n\n%s", fm, content)
 	return err
 }
