@@ -177,7 +177,8 @@ func TestGitHubIssueRepository_ListIssues_Pagination(t *testing.T) {
 		page := r.URL.Query().Get("page")
 		requestCount++
 
-		if page == "" || page == "1" {
+		switch page {
+		case "", "1":
 			// First page: include a Link header pointing to the next page.
 			// Use an absolute URL in the expected format.
 			nextURL := serverURL + "/api/v3/repos/testuser/testrepo/issues?page=2"
@@ -186,13 +187,13 @@ func TestGitHubIssueRepository_ListIssues_Pagination(t *testing.T) {
 			_, _ = w.Write([]byte(`[
 				{"id": 1, "number": 1, "title": "Issue 1", "state": "open", "user": {"login": "testuser"}, "created_at": "2021-01-01T00:00:00Z"}
 			]`))
-		} else if page == "2" {
+		case "2":
 			// Second page: last page, so no Link header.
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`[
 				{"id": 2, "number": 2, "title": "Issue 2", "state": "open", "user": {"login": "testuser"}, "created_at": "2021-01-02T00:00:00Z"}
 			]`))
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`[]`))
 		}

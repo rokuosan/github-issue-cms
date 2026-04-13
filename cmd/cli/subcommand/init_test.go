@@ -7,6 +7,7 @@ import (
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewInitCommand(t *testing.T) {
@@ -55,7 +56,9 @@ func TestInitCommand_CreateConfigFile(t *testing.T) {
 	// Change the working directory to the temporary directory.
 	originalWd, err := os.Getwd()
 	assert.NoError(t, err)
-	defer os.Chdir(originalWd)
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
 
 	err = os.Chdir(tempDir)
 	assert.NoError(t, err)
@@ -80,7 +83,9 @@ func TestInitCommand_WithUsernameAndRepository(t *testing.T) {
 	// Change the working directory to the temporary directory.
 	originalWd, err := os.Getwd()
 	assert.NoError(t, err)
-	defer os.Chdir(originalWd)
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
 
 	err = os.Chdir(tempDir)
 	assert.NoError(t, err)
@@ -114,7 +119,9 @@ func TestInitCommand_ShortFlags(t *testing.T) {
 
 	originalWd, err := os.Getwd()
 	assert.NoError(t, err)
-	defer os.Chdir(originalWd)
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
 
 	err = os.Chdir(tempDir)
 	assert.NoError(t, err)
