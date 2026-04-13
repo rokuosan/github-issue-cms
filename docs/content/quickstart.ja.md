@@ -23,7 +23,7 @@ weight: 1
 以下のコマンドを実行します。
 
 ```shell
-$ go install github.com/rokuosan/github-issue-cms@latest
+$ go install github.com/rokuosan/github-issue-cms@v0.6.1
 ```
 
 ### 2. コンフィグの作成

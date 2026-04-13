@@ -23,7 +23,7 @@ The following are required. Please prepare them in advance.
 Run the following command:
 
 ```shell
-$ go install github.com/rokuosan/github-issue-cms@latest
+$ go install github.com/rokuosan/github-issue-cms@v0.6.1
 ```
 
 ### 2. Create configuration file
