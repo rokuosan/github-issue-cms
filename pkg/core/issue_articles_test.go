@@ -263,6 +263,12 @@ func TestMetadataParser_Parse(t *testing.T) {
 			wantParsed: map[string]any{"author": "Test User", "custom": "value"},
 		},
 		{
+			name:       "empty yaml code fence",
+			body:       "```yaml\n```\n\nBody",
+			wantRaw:    "```yaml\n```",
+			wantParsed: map[string]any{},
+		},
+		{
 			name:       "yaml front matter",
 			body:       "---\nauthor: Test User\ncustom: value\n---\n\nBody",
 			wantRaw:    "---\nauthor: Test User\ncustom: value\n---",

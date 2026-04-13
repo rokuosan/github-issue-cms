@@ -51,8 +51,7 @@ func runGenerate(cmd *cobra.Command, githubToken string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 	if conf.GitHub.Username == "" || conf.GitHub.Repository == "" {
-		slog.Info("Run 'github-issue-cms init' to create a config file")
-		return fmt.Errorf("please set username and repository in gic.config.yaml")
+		return fmt.Errorf("please set username and repository in gic.config.yaml; run 'github-issue-cms init' to create a config file")
 	}
 
 	url := conf.GitHub.RepositoryURL()

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -229,4 +230,18 @@ func TestGitHubIssueRepository_ListIssues_InvalidCredentials(t *testing.T) {
 	issues, err := repo.ListIssues(context.Background(), "testuser", "testrepo")
 	assert.Error(t, err)
 	assert.Nil(t, issues)
+	assert.Contains(t, err.Error(), "invalid API token")
+}
+
+func TestNormalizeGitHubIssueError(t *testing.T) {
+	err := &github.ErrorResponse{
+		Response: &http.Response{StatusCode: http.StatusUnauthorized},
+		Message:  "Bad credentials",
+	}
+
+	got := normalizeGitHubIssueError(err)
+	assert.EqualError(t, got, "invalid API token; please check your GitHub token")
+
+	other := errors.New("some other error")
+	assert.Same(t, other, normalizeGitHubIssueError(other))
 }

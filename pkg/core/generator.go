@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/go-github/v67/github"
@@ -80,6 +82,7 @@ func (g *ArticleGenerator) Generate(ctx context.Context, username, repository st
 
 	// Convert and save articles.
 	successCount := 0
+	var saveErr error
 	for _, issue := range issues {
 		if err := ctx.Err(); err != nil {
 			return successCount, err
@@ -91,9 +94,14 @@ func (g *ArticleGenerator) Generate(ctx context.Context, username, repository st
 
 		if err := g.SaveArticle(ctx, article); err != nil {
 			g.logger.Error("Failed to save article", "issue", issue.GetNumber(), "error", err)
+			saveErr = errors.Join(saveErr, fmt.Errorf("issue #%d: %w", issue.GetNumber(), err))
 			continue
 		}
 		successCount++
+	}
+
+	if saveErr != nil {
+		return successCount, fmt.Errorf("failed to save one or more articles: %w", saveErr)
 	}
 
 	return successCount, nil

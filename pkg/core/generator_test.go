@@ -203,6 +203,51 @@ func TestArticleGenerator_Generate(t *testing.T) {
 	assertEqualCmp(t, 1, count)
 }
 
+func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
+	conf := *config.NewConfig()
+	service := NewArticleService(conf)
+
+	gen := &ArticleGenerator{
+		issueRepo: &stubIssueStore{
+			issues: []*github.Issue{
+				{
+					Number:    github.Int(1),
+					Title:     generatorStringPtr("Issue 1"),
+					Body:      generatorStringPtr("Body 1"),
+					CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
+					User:      &github.User{Login: generatorStringPtr("user")},
+					State:     generatorStringPtr("closed"),
+				},
+				{
+					Number:    github.Int(2),
+					Title:     generatorStringPtr("Issue 2"),
+					Body:      generatorStringPtr("Body 2"),
+					CreatedAt: generatorParseTime("2021-01-02T00:00:00Z"),
+					User:      &github.User{Login: generatorStringPtr("user")},
+					State:     generatorStringPtr("closed"),
+				},
+			},
+		},
+		articleRepo: stubArticleStore{
+			saveFn: func(ctx context.Context, article *Article, conf config.Config) error {
+				if article.Title == "Issue 2" {
+					return fmt.Errorf("save failed")
+				}
+				return nil
+			},
+		},
+		service: service,
+		config:  conf,
+		logger:  slog.Default(),
+	}
+
+	count, err := gen.Generate(context.Background(), "testuser", "testrepo")
+	assert.Error(t, err)
+	assertEqualCmp(t, 1, count)
+	assert.Contains(t, err.Error(), "failed to save one or more articles")
+	assert.Contains(t, err.Error(), "issue #2")
+}
+
 // Helper functions.
 
 func generatorStringPtr(s string) *string {
@@ -264,4 +309,24 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, username, reposito
 	}
 
 	return allIssues, nil
+}
+
+type stubIssueStore struct {
+	issues []*github.Issue
+	err    error
+}
+
+func (s *stubIssueStore) ListIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
+	return s.issues, s.err
+}
+
+type stubArticleStore struct {
+	saveFn func(ctx context.Context, article *Article, conf config.Config) error
+}
+
+func (s stubArticleStore) Save(ctx context.Context, article *Article, conf config.Config) error {
+	if s.saveFn == nil {
+		return nil
+	}
+	return s.saveFn(ctx, article, conf)
 }

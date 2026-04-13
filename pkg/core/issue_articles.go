@@ -150,13 +150,20 @@ func (codeFenceMetadataParser) Parse(body string) (metadataBlock, bool, error) {
 
 	infoString := strings.TrimSpace(rest[:lineEnd])
 	afterHeader := rest[lineEnd+1:]
-	closingOffset := strings.Index(afterHeader, "\n```")
-	if closingOffset < 0 {
-		return metadataBlock{}, false, nil
+	closingOffset := 0
+	closingLength := len("```")
+	if strings.HasPrefix(afterHeader, "```") {
+		closingOffset = 0
+	} else {
+		closingOffset = strings.Index(afterHeader, "\n```")
+		if closingOffset < 0 {
+			return metadataBlock{}, false, nil
+		}
+		closingLength = len("\n```")
 	}
 
 	content := afterHeader[:closingOffset]
-	rawLength := 3 + lineEnd + 1 + closingOffset + len("\n```")
+	rawLength := 3 + lineEnd + 1 + closingOffset + closingLength
 	raw := prefix + trimmed[:rawLength]
 
 	format := metadataFormatYAML

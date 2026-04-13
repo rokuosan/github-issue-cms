@@ -2,9 +2,10 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
+	"net/http"
 
 	"github.com/google/go-github/v67/github"
 )
@@ -98,7 +99,8 @@ func filterOutPullRequests(items []*github.Issue) []*github.Issue {
 }
 
 func normalizeGitHubIssueError(err error) error {
-	if strings.Contains(err.Error(), "401 Bad credentials") {
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil && ghErr.Response.StatusCode == http.StatusUnauthorized {
 		return fmt.Errorf("invalid API token; please check your GitHub token")
 	}
 	return err
