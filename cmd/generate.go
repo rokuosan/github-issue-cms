@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
 
@@ -17,15 +18,13 @@ var generateCmd = &cobra.Command{
 
 This command will get issues from GitHub and create articles from them.
 	The articles will be saved in the "content" directory.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		conf, err := config.Get()
 		if err != nil {
-			slog.Error("Failed to load config: " + err.Error())
-			return
+			return err
 		}
 		if conf.GitHub.Username == "" || conf.GitHub.Repository == "" {
-			slog.Error("Please set username and repository in gic.config.yaml")
-			return
+			return fmt.Errorf("please set username and repository in gic.config.yaml")
 		}
 		url := conf.GitHub.RepositoryURL()
 		slog.Info("Target Repository: " + url)
@@ -44,6 +43,7 @@ This command will get issues from GitHub and create articles from them.
 		}
 
 		slog.Info("Complete")
+		return nil
 	},
 }
 
