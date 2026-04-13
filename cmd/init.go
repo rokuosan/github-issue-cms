@@ -11,8 +11,12 @@ var initCmd = &cobra.Command{
 	Short: "Generate config file.",
 	Long:  `Generate config file named "gic.config.yaml" in the current directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.Generate()
-		config.Get()
+		if err := config.Generate(); err != nil {
+			panic(err)
+		}
+		if _, err := config.Get(); err != nil {
+			panic(err)
+		}
 
 		if username := cmd.Flag("username").Value.String(); username != "<YOUR_USERNAME>" {
 			viper.Set("github.username", username)

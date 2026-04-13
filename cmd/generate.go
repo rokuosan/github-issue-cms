@@ -16,9 +16,13 @@ var generateCmd = &cobra.Command{
 	Long: `Generate articles from GitHub issues.
 
 This command will get issues from GitHub and create articles from them.
-The articles will be saved in the "content" directory.`,
+	The articles will be saved in the "content" directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		conf := config.Get()
+		conf, err := config.Get()
+		if err != nil {
+			slog.Error("Failed to load config: " + err.Error())
+			return
+		}
 		if conf.GitHub.Username == "" || conf.GitHub.Repository == "" {
 			slog.Error("Please set username and repository in gic.config.yaml")
 			return

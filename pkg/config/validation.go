@@ -1,10 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 )
 
-func (c *Config) validate() {
+func (c *Config) validate() error {
 	constraints := []struct {
 		errorMessage string
 		fn           func() bool
@@ -17,9 +18,11 @@ func (c *Config) validate() {
 	for _, constraint := range constraints {
 		if !constraint.fn() {
 			slog.Error(constraint.errorMessage)
-			panic("Failed to validate the configuration")
+			return fmt.Errorf("failed to validate the configuration")
 		}
 	}
+
+	return nil
 }
 
 func (c *Config) WarnDeprecatedOptions() bool {
