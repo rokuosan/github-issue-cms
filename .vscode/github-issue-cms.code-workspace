@@ -1,0 +1,23 @@
+{
+    "folders": [
+        {
+            "name": "GitHub Issue CMS",
+            "path": "..",
+        }
+    ],
+    "settings": {
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": [
+            "--path-mode=abs",
+            "--fast-only"
+        ],
+        "go.formatTool": "custom",
+        "go.alternateTools": {
+            "customFormatter": "golangci-lint"
+        },
+        "go.formatFlags": [
+            "fmt",
+            "--stdin"
+        ]
+    }
+}
