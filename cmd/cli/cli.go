@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -8,26 +9,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var debug bool
+var verbosity int
 
 // NewRootCommand creates the root command.
 func NewRootCommand() *cobra.Command {
+	verbosity = 0
+	configureLogger(0)
+
 	rootCmd := &cobra.Command{
-		Use:   "github-issue-cms",
-		Short: "Generate articles from GitHub issues for Hugo",
+		Use:           "github-issue-cms",
+		Short:         "Generate articles from GitHub issues for Hugo",
+		SilenceErrors: true,
+		SilenceUsage:  true,
 		Long: `GitHub Issue-based headless CMS for Hugo.
 
 This tool converts GitHub Issues into Hugo-compatible markdown articles
 with frontmatter and downloads attached images.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if debug {
-				slog.SetLogLoggerLevel(slog.LevelDebug)
-			}
+			configureLogger(verbosity)
 		},
 	}
 
 	// Global flags.
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
+	rootCmd.PersistentFlags().CountVarP(&verbosity, "verbose", "v", "Increase log verbosity (-v: info, -vv: debug)")
 
 	// Register subcommands.
 	rootCmd.AddCommand(subcommand.NewGenerateCommand())
@@ -40,7 +44,24 @@ with frontmatter and downloads attached images.`,
 func Execute() {
 	rootCmd := NewRootCommand()
 	if err := rootCmd.Execute(); err != nil {
-		slog.Error("Command execution failed: " + err.Error())
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+func configureLogger(verbosity int) {
+	level := new(slog.LevelVar)
+	level.Set(logLevelForVerbosity(verbosity))
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+}
+
+func logLevelForVerbosity(verbosity int) slog.Level {
+	switch {
+	case verbosity >= 2:
+		return slog.LevelDebug
+	case verbosity == 1:
+		return slog.LevelInfo
+	default:
+		return slog.LevelError
 	}
 }

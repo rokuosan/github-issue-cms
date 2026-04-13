@@ -1,6 +1,7 @@
 package subcommand
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
@@ -47,15 +48,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Generate the config file.
 	if err := config.Generate(); err != nil {
-		slog.Error("Failed to generate config file: " + err.Error())
-		return err
+		return fmt.Errorf("failed to generate config file: %w", err)
 	}
 
 	// Load configuration.
 	conf, err := config.Get()
 	if err != nil {
-		slog.Error("Failed to load config file: " + err.Error())
-		return err
+		return fmt.Errorf("failed to load config file: %w", err)
 	}
 
 	// Override config values when flags are provided.
@@ -70,8 +69,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Save configuration.
 	if err := viper.WriteConfig(); err != nil {
-		slog.Error("Failed to write config file: " + err.Error())
-		return err
+		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
 	configPath := config.GetConfigPath()

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,11 +35,10 @@ func TestNewRootCommand(t *testing.T) {
 func TestRootCommand_Flags(t *testing.T) {
 	cmd := NewRootCommand()
 
-	// Verify the debug flag.
-	debugFlag := cmd.PersistentFlags().Lookup("debug")
-	assert.NotNil(t, debugFlag)
-	assert.Equal(t, "d", debugFlag.Shorthand)
-	assert.Equal(t, "false", debugFlag.DefValue)
+	verboseFlag := cmd.PersistentFlags().Lookup("verbose")
+	assert.NotNil(t, verboseFlag)
+	assert.Equal(t, "v", verboseFlag.Shorthand)
+	assert.Equal(t, "0", verboseFlag.DefValue)
 }
 
 func TestRootCommand_Help(t *testing.T) {
@@ -65,16 +65,20 @@ func TestRootCommand_InvalidSubcommand(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestRootCommand_DebugFlag(t *testing.T) {
-	cmd := NewRootCommand()
+func TestLogLevelForVerbosity(t *testing.T) {
+	tests := []struct {
+		name      string
+		verbosity int
+		want      slog.Level
+	}{
+		{name: "default", verbosity: 0, want: slog.LevelError},
+		{name: "verbose", verbosity: 1, want: slog.LevelInfo},
+		{name: "very verbose", verbosity: 2, want: slog.LevelDebug},
+	}
 
-	// Ensure the debug flag can be set.
-	cmd.SetArgs([]string{"--debug", "--help"})
-
-	err := cmd.Execute()
-	assert.NoError(t, err)
-
-	// Ensure the debug flag is parsed.
-	debugFlag := cmd.PersistentFlags().Lookup("debug")
-	assert.NotNil(t, debugFlag)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, logLevelForVerbosity(tt.verbosity))
+		})
+	}
 }

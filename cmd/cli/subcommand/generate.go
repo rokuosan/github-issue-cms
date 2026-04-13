@@ -1,6 +1,7 @@
 package subcommand
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
 
@@ -26,8 +27,11 @@ Examples:
   # Generate articles with GitHub token
   github-issue-cms generate --token YOUR_GITHUB_TOKEN
 
+  # Generate with info logging
+  github-issue-cms -v generate --token YOUR_GITHUB_TOKEN
+
   # Generate with debug logging
-  github-issue-cms generate --token YOUR_GITHUB_TOKEN --debug`,
+  github-issue-cms -vv generate --token YOUR_GITHUB_TOKEN`,
 		RunE: runGenerate,
 	}
 
@@ -42,13 +46,11 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	// Load configuration.
 	conf, err := config.Get()
 	if err != nil {
-		slog.Error("Failed to load config: " + err.Error())
-		return err
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 	if conf.GitHub.Username == "" || conf.GitHub.Repository == "" {
-		slog.Error("Please set username and repository in gic.config.yaml")
 		slog.Info("Run 'github-issue-cms init' to create a config file")
-		return nil
+		return fmt.Errorf("please set username and repository in gic.config.yaml")
 	}
 
 	url := conf.GitHub.RepositoryURL()
@@ -57,16 +59,14 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	// Create the article generator.
 	generator, err := core.NewArticleGeneratorWithLogger(conf, githubToken, slog.Default())
 	if err != nil {
-		slog.Error("Failed to create generator: " + err.Error())
-		return err
+		return fmt.Errorf("failed to create generator: %w", err)
 	}
 
 	// Generate articles.
 	slog.Info("Generating articles...")
 	count, err := generator.Generate(cmd.Context(), conf.GitHub.Username, conf.GitHub.Repository)
 	if err != nil {
-		slog.Error("Failed to generate articles: " + err.Error())
-		return err
+		return fmt.Errorf("failed to generate articles: %w", err)
 	}
 
 	slog.Info("Complete: " + strconv.Itoa(count) + " articles generated")
