@@ -8,12 +8,16 @@ import (
 	"mime"
 	"net/http"
 	"strings"
+	"time"
 )
+
+const defaultHTTPTimeout = 30
 
 // HTTPImageRepository downloads images over HTTP.
 type HTTPImageRepository struct {
 	token  string
 	logger *slog.Logger
+	client *http.Client
 }
 
 // NewHTTPImageRepository creates a new HTTPImageRepository.
@@ -26,6 +30,7 @@ func NewHTTPImageRepositoryWithLogger(token string, logger *slog.Logger) AssetFe
 	return &HTTPImageRepository{
 		token:  token,
 		logger: defaultLogger(logger),
+		client: &http.Client{Timeout: defaultHTTPTimeout * time.Second},
 	}
 }
 
@@ -66,8 +71,7 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 		req.Header.Set("Authorization", "token "+r.token)
 	}
 
-	client := new(http.Client)
-	resp, err := client.Do(req)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}

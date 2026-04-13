@@ -130,7 +130,7 @@ func TestHTTPImageRepository_Download_InvalidURL(t *testing.T) {
 	repo := NewHTTPImageRepository("")
 
 	image := &Image{
-		URL:  "http://invalid-url-that-does-not-exist.example.com/image.png",
+		URL:  "://invalid-url",
 		Time: "2021-01-01_000000",
 		ID:   0,
 	}
