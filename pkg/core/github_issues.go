@@ -79,7 +79,7 @@ func (r *GitHubIssueRepository) listIssuesPage(ctx context.Context, username, re
 		&github.IssueListByRepoOptions{
 			State: "all",
 			ListOptions: github.ListOptions{
-				PerPage: 200,
+				PerPage: 100,
 				Page:    page,
 			},
 		},

@@ -123,12 +123,12 @@ func resolveImageOutput(conf config.Config, datetime time.Time) (string, string,
 
 // createDirectoryIfNotExist creates the directory if it does not exist.
 func createDirectoryIfNotExist(path string) error {
-	return os.MkdirAll(path, 0o777)
+	return os.MkdirAll(path, 0o755)
 }
 
 // createFileAndWrite creates a file and writes content to it.
 func createFileAndWrite(path string, content string) error {
-	return os.WriteFile(path, []byte(content), 0o666)
+	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Image, imageDir string) (string, error) {
