@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	regexMarkdownImage = regexp.MustCompile(`!\[image*]\((.*)\)`)
+	regexMarkdownImage = regexp.MustCompile(`!\[[^\]]*]\((.+?)\)`)
 	regexHTMLImage     = regexp.MustCompile(`<img width="\d+" alt="(\w+)" src="(\S+)">`)
 )
 
