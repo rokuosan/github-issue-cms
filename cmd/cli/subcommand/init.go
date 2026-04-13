@@ -9,13 +9,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	username   string
-	repository string
-)
-
 // NewInitCommand creates the init subcommand.
 func NewInitCommand() *cobra.Command {
+	var (
+		username   string
+		repository string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Generate config file",
@@ -33,7 +33,9 @@ Examples:
 
   # Short form
   github-issue-cms init -u yourname -r yourrepo`,
-		RunE: runInit,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runInit(cmd, username, repository)
+		},
 	}
 
 	// Define flags.
@@ -43,7 +45,7 @@ Examples:
 	return cmd
 }
 
-func runInit(cmd *cobra.Command, args []string) error {
+func runInit(cmd *cobra.Command, username, repository string) error {
 	slog.Info("Generating configuration file...")
 
 	// Generate the config file.
@@ -52,7 +54,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load configuration.
-	conf, err := config.Get()
+	conf, err := config.Reload()
 	if err != nil {
 		return fmt.Errorf("failed to load config file: %w", err)
 	}

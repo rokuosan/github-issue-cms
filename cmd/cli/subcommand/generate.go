@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var githubToken string
-
 // NewGenerateCommand creates the generate subcommand.
 func NewGenerateCommand() *cobra.Command {
+	var githubToken string
+
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate articles from GitHub issues",
@@ -32,7 +32,9 @@ Examples:
 
   # Generate with debug logging
   github-issue-cms -vv generate --token YOUR_GITHUB_TOKEN`,
-		RunE: runGenerate,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runGenerate(cmd, githubToken)
+		},
 	}
 
 	// Define flags.
@@ -42,7 +44,7 @@ Examples:
 	return cmd
 }
 
-func runGenerate(cmd *cobra.Command, args []string) error {
+func runGenerate(cmd *cobra.Command, githubToken string) error {
 	// Load configuration.
 	conf, err := config.Get()
 	if err != nil {
