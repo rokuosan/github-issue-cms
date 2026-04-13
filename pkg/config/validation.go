@@ -18,7 +18,7 @@ func (c *Config) validate() error {
 	for _, constraint := range constraints {
 		if !constraint.fn() {
 			slog.Error(constraint.errorMessage)
-			return fmt.Errorf("failed to validate the configuration")
+			return fmt.Errorf("failed to validate the configuration: %s", constraint.errorMessage)
 		}
 	}
 

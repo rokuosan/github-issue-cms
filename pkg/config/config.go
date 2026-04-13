@@ -32,6 +32,13 @@ func load() error {
 	return config.validate()
 }
 
+// Reload clears the cached config and reloads it from disk.
+func Reload() (Config, error) {
+	config = Config{}
+	viper.Reset()
+	return Get()
+}
+
 // Generate generates a configuration file.
 func Generate() error {
 	viperInitialize()
