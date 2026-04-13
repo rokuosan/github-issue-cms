@@ -15,7 +15,7 @@ Issues are treated as articles.
 ### 1. Install this application
 
 ```bash
-$ go install github.com/rokuosan/github-issue-cms@latest
+$ go install github.com/rokuosan/github-issue-cms@v0.6.1
 ```
 
 ### 2. Create Config file
@@ -101,7 +101,7 @@ jobs:
         go-version: '1.21.4'
 
     - name: Install
-      run: go install github.com/rokuosan/github-issue-cms@latest
+      run: go install github.com/rokuosan/github-issue-cms@v0.6.1
 
     - name: Generate
       run: github-issue-cms generate --token=${{ secrets.GH_TOKEN }}
