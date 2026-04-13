@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-github/v67/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewArticleService(t *testing.T) {
@@ -27,7 +28,7 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 	tests := []struct {
 		name  string
 		issue *github.Issue
-		want  map[string]interface{} // Fields to verify.
+		want  map[string]interface{}
 	}{
 		{
 			name: "基本的なIssue変換",
@@ -177,7 +178,6 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 
 			assert.NotNil(t, got)
 
-			// Check the requested fields.
 			if title, ok := tt.want["title"]; ok {
 				assertEqualCmp(t, title, got.Title)
 			}
@@ -215,7 +215,6 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
 	service := NewArticleService(*config.NewConfig())
 
-	// Pull requests should return nil.
 	pr := &github.Issue{
 		Title:            stringPtr("PR Title"),
 		Body:             stringPtr("PR body"),
@@ -223,7 +222,7 @@ func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
 		User:             &github.User{Login: stringPtr("user")},
 		State:            stringPtr("open"),
 		Labels:           []*github.Label{},
-		PullRequestLinks: &github.PullRequestLinks{}, // This makes the issue behave as a pull request.
+		PullRequestLinks: &github.PullRequestLinks{},
 	}
 
 	got := service.ConvertIssueToArticle(pr)
@@ -247,7 +246,61 @@ func TestArticleService_ConvertIssueToArticle_CRRemoval(t *testing.T) {
 	assertEqualCmp(t, "Line1\nLine2\nLine3\n", got.Content)
 }
 
-// Helper functions.
+func TestMetadataParser_Parse(t *testing.T) {
+	parser := newMetadataParser()
+
+	tests := []struct {
+		name       string
+		body       string
+		wantRaw    string
+		wantParsed map[string]any
+		wantErr    string
+	}{
+		{
+			name:       "yaml code fence",
+			body:       "```yaml\nauthor: Test User\ncustom: value\n```\n\nBody",
+			wantRaw:    "```yaml\nauthor: Test User\ncustom: value\n```",
+			wantParsed: map[string]any{"author": "Test User", "custom": "value"},
+		},
+		{
+			name:       "yaml front matter",
+			body:       "---\nauthor: Test User\ncustom: value\n---\n\nBody",
+			wantRaw:    "---\nauthor: Test User\ncustom: value\n---",
+			wantParsed: map[string]any{"author": "Test User", "custom": "value"},
+		},
+		{
+			name:       "toml front matter",
+			body:       "+++\nauthor = \"Test User\"\ncustom = \"value\"\n+++\n\nBody",
+			wantRaw:    "+++\nauthor = \"Test User\"\ncustom = \"value\"\n+++",
+			wantParsed: map[string]any{"author": "Test User", "custom": "value"},
+		},
+		{
+			name:    "invalid yaml code fence",
+			body:    "```\nauthor: [broken\n```\n\nBody",
+			wantErr: "failed to parse front matter",
+		},
+		{
+			name:    "no metadata",
+			body:    "Body only",
+			wantErr: "front matter not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			block, err := parser.Parse(tt.body)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assertEqualCmp(t, tt.wantRaw, block.Raw)
+			assertEqualCmp(t, tt.wantParsed, block.Values.Values())
+		})
+	}
+}
 
 func stringPtr(s string) *string {
 	return &s

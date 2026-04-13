@@ -2,7 +2,6 @@ package core
 
 import (
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -155,46 +154,4 @@ func TestHugoArticleRenderer_DoesNotMutateReceiver(t *testing.T) {
 	assertEqualCmp(t, want, article, cmp.Comparer(func(x, y FrontMatter) bool {
 		return cmp.Equal(x.Values(), y.Values())
 	}))
-}
-
-func TestArticle_ParseDateTime(t *testing.T) {
-	tests := []struct {
-		name    string
-		date    string
-		want    time.Time
-		wantErr bool
-	}{
-		{
-			name:    "ISO8601 format",
-			date:    "2021-01-01T00:00:00Z",
-			want:    time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
-			wantErr: false,
-		},
-		{
-			name:    "date only format",
-			date:    "2021-01-01",
-			want:    time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
-			wantErr: false,
-		},
-		{
-			name:    "invalid format",
-			date:    "invalid-date",
-			want:    time.Time{},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			article := &Article{Date: tt.date}
-			got, err := article.ParseDateTime()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseDateTime() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr {
-				assertEqualCmp(t, tt.want, got)
-			}
-		})
-	}
 }
