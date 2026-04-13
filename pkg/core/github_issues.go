@@ -1,0 +1,105 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"strings"
+
+	"github.com/google/go-github/v67/github"
+)
+
+// GitHubIssueRepository retrieves issues via the GitHub API.
+type GitHubIssueRepository struct {
+	client *github.Client
+	logger *slog.Logger
+}
+
+// NewGitHubIssueRepository creates a new GitHubIssueRepository.
+func NewGitHubIssueRepository(token string) (IssueStore, error) {
+	return NewGitHubIssueRepositoryWithLogger(token, nil)
+}
+
+// NewGitHubIssueRepositoryWithLogger creates a new GitHubIssueRepository with an injected logger.
+func NewGitHubIssueRepositoryWithLogger(token string, logger *slog.Logger) (IssueStore, error) {
+	if token == "" {
+		return nil, fmt.Errorf("GitHub token is required")
+	}
+
+	client := github.NewClient(nil).WithAuthToken(token)
+	if client == nil {
+		return nil, fmt.Errorf("failed to create GitHub client")
+	}
+
+	return &GitHubIssueRepository{
+		client: client,
+		logger: defaultLogger(logger),
+	}, nil
+}
+
+// ListIssues retrieves all issues from the specified repository.
+func (r *GitHubIssueRepository) ListIssues(ctx context.Context, username, repoName string) ([]*github.Issue, error) {
+	if username == "" || repoName == "" {
+		return nil, fmt.Errorf("username and repository name are required")
+	}
+
+	r.logger.Debug("Collecting Issues...")
+	var (
+		issues []*github.Issue
+		rate   github.Rate
+		page   = 1
+	)
+
+	for page != 0 {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		issuesAndPRs, resp, err := r.listIssuesPage(ctx, username, repoName, page)
+
+		if err != nil {
+			return nil, normalizeGitHubIssueError(err)
+		}
+
+		issues = append(issues, filterOutPullRequests(issuesAndPRs)...)
+		page = resp.NextPage
+		rate = resp.Rate
+	}
+
+	r.logger.Debug("Collected issues", "count", len(issues))
+	r.logger.Debug("GitHub rate limit", "remaining", rate.Remaining, "limit", rate.Limit, "reset", rate.Reset)
+
+	return issues, nil
+}
+
+func (r *GitHubIssueRepository) listIssuesPage(ctx context.Context, username, repoName string, page int) ([]*github.Issue, *github.Response, error) {
+	return r.client.Issues.ListByRepo(
+		ctx,
+		username,
+		repoName,
+		&github.IssueListByRepoOptions{
+			State: "all",
+			ListOptions: github.ListOptions{
+				PerPage: 200,
+				Page:    page,
+			},
+		},
+	)
+}
+
+func filterOutPullRequests(items []*github.Issue) []*github.Issue {
+	issues := make([]*github.Issue, 0, len(items))
+	for _, item := range items {
+		if item.IsPullRequest() {
+			continue
+		}
+		issues = append(issues, item)
+	}
+	return issues
+}
+
+func normalizeGitHubIssueError(err error) error {
+	if strings.Contains(err.Error(), "401 Bad credentials") {
+		return fmt.Errorf("invalid API token; please check your GitHub token")
+	}
+	return err
+}
