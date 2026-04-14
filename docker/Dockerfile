@@ -1,23 +1,30 @@
+# syntax=docker/dockerfile:1
 FROM golang:1.26.2-alpine3.23 AS builder
 
-RUN apk add --no-cache git gcc musl-dev
-
-WORKDIR /go/src/github.com/rokuosan/github-issue-cms
-
-ENV GO111MODULE=on
+WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY . .
 
-RUN go build -o /go/bin/github-issue-cms .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux \
+    go build -trimpath -ldflags="-s -w" -o /out/github-issue-cms .
 
 FROM alpine:3.23
 
-RUN apk add --no-cache ca-certificates
+RUN adduser -D -u 10001 app && apk add --no-cache ca-certificates \
+    && mkdir -p /work \
+    && chown app:app /work
 
-COPY --from=builder /go/bin/github-issue-cms /usr/local/bin/github-issue-cms
+COPY --from=builder /out/github-issue-cms /usr/local/bin/github-issue-cms
+
+WORKDIR /work
+
+USER app
 
 ENTRYPOINT ["/usr/local/bin/github-issue-cms"]
 CMD ["--help"]
