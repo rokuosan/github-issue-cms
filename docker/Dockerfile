@@ -16,9 +16,13 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM alpine:3.22
 
-RUN adduser -D -u 10001 app && apk add --no-cache ca-certificates
+RUN adduser -D -u 10001 app && apk add --no-cache ca-certificates \
+    && mkdir -p /work \
+    && chown app:app /work
 
 COPY --from=builder /out/github-issue-cms /usr/local/bin/github-issue-cms
+
+WORKDIR /work
 
 USER app
 
