@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/rokuosan/github-issue-cms/cmd"
+	"github.com/rokuosan/github-issue-cms/cmd/cli"
 )
 
 func main() {
@@ -15,6 +15,6 @@ func main() {
 		slog.Debug(fmt.Sprintf("Finished in %f seconds\n", time.Since(startTime).Seconds()))
 	}()
 
-	// Execute the root command
-	cmd.Execute()
+	// Execute the CLI
+	cli.Execute()
 }

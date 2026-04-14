@@ -18,49 +18,56 @@ func viperInitialize() {
 }
 
 // load loads a configuration file.
-func load() {
+func load() error {
 	viperInitialize()
 
 	if err := viper.ReadInConfig(); err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := viper.Unmarshal(&config); err != nil {
-		panic(err)
+		return err
 	}
 
-	config.validate()
+	return config.validate()
+}
+
+// Reload clears the cached config and reloads it from disk.
+func Reload() (Config, error) {
+	config = Config{}
+	viper.Reset()
+	return Get()
 }
 
 // Generate generates a configuration file.
-func Generate() {
+func Generate() error {
 	viperInitialize()
 
 	c := NewConfig()
 
 	data, err := yaml.Marshal(c)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	file, err := os.Create(GetConfigPath())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer file.Close()
 
 	_, err = file.Write(data)
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 // Get returns a configuration.
 // If the configuration is not loaded, it loads it.
-func Get() Config {
+func Get() (Config, error) {
 	if config == (Config{}) {
-		load()
+		if err := load(); err != nil {
+			return Config{}, err
+		}
 	}
 
-	return config
+	return config, nil
 }

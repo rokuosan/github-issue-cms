@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine3.20 AS builder
+FROM golang:1.26.2-alpine3.23 AS builder
 
 RUN apk add --no-cache git gcc musl-dev
 
@@ -13,7 +13,7 @@ COPY . .
 
 RUN go build -o /go/bin/github-issue-cms .
 
-FROM alpine:3.22
+FROM alpine:3.23
 
 RUN apk add --no-cache ca-certificates
 
