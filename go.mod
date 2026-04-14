@@ -1,6 +1,8 @@
 module github.com/rokuosan/github-issue-cms
 
-go 1.24
+go 1.25.0
+
+toolchain go1.26
 
 require (
 	github.com/google/go-cmp v0.7.0
@@ -8,7 +10,6 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	go.uber.org/mock v0.5.2
 )
 
 require (

@@ -98,7 +98,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21.4'
+        go-version: '1.25.0'
 
     - name: Install
       run: go install github.com/rokuosan/github-issue-cms@v0.6.1
