@@ -35,3 +35,13 @@ tasks:
     desc: "Run tests."
     cmds:
       - "go test -v ./..."
+
+  release:check:
+    desc: "Validate GoReleaser config."
+    cmds:
+      - "goreleaser check"
+
+  release:snapshot:
+    desc: "Build release artifacts locally without publishing."
+    cmds:
+      - "goreleaser release --snapshot --clean"

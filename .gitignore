@@ -29,3 +29,5 @@ go.work
 
 .gocache
 .cache
+
+dist
