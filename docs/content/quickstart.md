@@ -38,15 +38,14 @@ github:
   username: '<YOUR_GITHUB_USERNAME>'
   repository: '<YOUR_GITHUB_REPOSITORY>'
 
-hugo:
-  filename:
-    articles: '%Y-%m-%d_%H%M%S.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts'
-    images: 'static/images/%Y-%m-%d_%H%M%S'
-  url:
-    images: '/images/%Y-%m-%d_%H%M%S'
+output:
+  articles:
+    directory: 'content/posts'
+    filename: '%Y-%m-%d_%H%M%S.md'
+  images:
+    directory: 'static/images/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: '/images/%Y-%m-%d_%H%M%S'
 ```
 
 ### 3. Execute
