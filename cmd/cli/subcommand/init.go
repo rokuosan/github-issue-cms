@@ -21,7 +21,7 @@ func NewInitCommand() *cobra.Command {
 		Short: "Generate config file",
 		Long: `Generate config file named "gic.config.yaml" in the current directory.
 
-This command creates a configuration file with default settings for Hugo integration.
+This command creates a configuration file with default output settings.
 You can specify GitHub username and repository using flags.
 
 Examples:

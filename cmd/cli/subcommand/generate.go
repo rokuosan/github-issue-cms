@@ -20,7 +20,7 @@ func NewGenerateCommand() *cobra.Command {
 		Long: `Generate articles from GitHub issues.
 
 This command will get issues from GitHub and create articles from them.
-The articles will be saved in the Hugo-compatible directory structure
+The articles will be saved in the configured output directory structure
 specified in gic.config.yaml.
 
 Examples:
