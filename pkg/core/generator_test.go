@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v67/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -305,7 +305,7 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, username, reposito
 		if resp.NextPage == 0 {
 			break
 		}
-		opts.Page = resp.NextPage
+		opts.ListOptions.Page = resp.NextPage
 	}
 
 	return allIssues, nil
