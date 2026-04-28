@@ -2,6 +2,7 @@
 FROM golang:1.26.2-alpine3.23 AS builder
 
 WORKDIR /src
+ARG VERSION=dev
 
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -12,7 +13,7 @@ COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
-    go build -trimpath -ldflags="-s -w" -o /out/github-issue-cms .
+    go build -trimpath -ldflags="-s -w -X github.com/rokuosan/github-issue-cms/cmd/cli.Version=${VERSION}" -o /out/github-issue-cms .
 
 FROM alpine:3.23
 

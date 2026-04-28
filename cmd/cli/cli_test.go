@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"bytes"
 	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewRootCommand(t *testing.T) {
@@ -16,20 +18,23 @@ func TestNewRootCommand(t *testing.T) {
 
 	// Ensure subcommands are registered.
 	commands := cmd.Commands()
-	assert.GreaterOrEqual(t, len(commands), 2, "Should have at least 2 subcommands")
+	assert.GreaterOrEqual(t, len(commands), 3, "Should have at least 3 subcommands")
 
-	var hasGenerate, hasInit bool
+	var hasGenerate, hasInit, hasVersion bool
 	for _, subCmd := range commands {
 		switch subCmd.Use {
 		case "generate":
 			hasGenerate = true
 		case "init":
 			hasInit = true
+		case "version":
+			hasVersion = true
 		}
 	}
 
 	assert.True(t, hasGenerate, "Should have 'generate' subcommand")
 	assert.True(t, hasInit, "Should have 'init' subcommand")
+	assert.True(t, hasVersion, "Should have 'version' subcommand")
 }
 
 func TestRootCommand_Flags(t *testing.T) {
@@ -51,10 +56,19 @@ func TestRootCommand_Help(t *testing.T) {
 
 func TestRootCommand_Version(t *testing.T) {
 	cmd := NewRootCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetArgs([]string{"version"})
 
-	// Version information is not available yet, but may be added later.
-	// For now, just ensure the command is constructed correctly.
-	assert.NotNil(t, cmd)
+	originalVersion := Version
+	Version = "v9.9.9"
+	t.Cleanup(func() {
+		Version = originalVersion
+	})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.Equal(t, "v9.9.9\n", stdout.String())
 }
 
 func TestRootCommand_InvalidSubcommand(t *testing.T) {

@@ -11,6 +11,9 @@ import (
 
 var verbosity int
 
+// Version is the application version and can be overridden at build time with -ldflags.
+var Version = "dev"
+
 // NewRootCommand creates the root command.
 func NewRootCommand() *cobra.Command {
 	verbosity = 0
@@ -36,6 +39,7 @@ with frontmatter and downloads attached images.`,
 	// Register subcommands.
 	rootCmd.AddCommand(subcommand.NewGenerateCommand())
 	rootCmd.AddCommand(subcommand.NewInitCommand())
+	rootCmd.AddCommand(subcommand.NewVersionCommand(&Version))
 
 	return rootCmd
 }
