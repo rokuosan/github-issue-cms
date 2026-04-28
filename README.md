@@ -70,11 +70,9 @@ $ tree --dirsfirst
 
 ### 4. (Optional) Auto commit with GitHub Actions
 
-First, you set GitHub Token to your repository secret. (On your repository screen, go to "Settings" > "Secrets and variables" > "New repository secret")
+GitHub Actions provides a built-in `GITHUB_TOKEN`, so you do not need to create a separate repository secret for this workflow.
 
-On this tutorial, I set the Token as "GH_TOKEN".
-
-Next, you write this workflow.
+Next, write this workflow with the permissions required to read issues and commit generated files.
 
 ```yaml
 name: Go
@@ -84,34 +82,36 @@ on:
     branches: [ "main" ]
   issues:
     types: [reopened, closed]
-  pull_request:
-    branches: [ "main" ]
-permissions: write-all
+permissions:
+  contents: write
+  issues: read
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version: '1.25.0'
+        # If your repository manages the Go version in go.mod, you can use this instead.
+        # go-version-file: go.mod
 
     - name: Install
       run: go install github.com/rokuosan/github-issue-cms@v0.6.1
 
     - name: Generate
-      run: github-issue-cms generate --token=${{ secrets.GH_TOKEN }}
+      run: github-issue-cms generate --token=${{ secrets.GITHUB_TOKEN }}
 
     - name: Auto Commit
-      uses: stefanzweifel/git-auto-commit-action@v4
+      uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
       with:
-        commit_message: "ci: :memo: Add new articles"
+        commit_message: "ci(github-issue-cms): :memo: Update content from GitHub Issues"
 ```
 
 Congratulations.
 
-Your Hugo site will automatically deployed when a Issue is closed or reopened.
+Your Hugo site content will be regenerated and committed automatically when you push to `main` or an issue is closed or reopened.
