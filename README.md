@@ -18,6 +18,8 @@ Issues are treated as articles.
 $ go install github.com/rokuosan/github-issue-cms@v0.6.1
 ```
 
+GitHub Releases also publish prebuilt binaries for macOS, Linux, and Windows.
+
 ### 2. Create Config file
 
 Create a YAML file named ``gic.config.yaml`` and write your credentials.
@@ -115,3 +117,30 @@ jobs:
 Congratulations.
 
 Your Hugo site content will be regenerated and committed automatically when you push to `main` or an issue is closed or reopened.
+
+## Release automation
+
+This repository publishes CLI binaries to GitHub Releases automatically when a tag matching `v*` is pushed.
+
+Artifacts:
+
+- `github-issue-cms_<version>_darwin_amd64.tar.gz`
+- `github-issue-cms_<version>_darwin_arm64.tar.gz`
+- `github-issue-cms_<version>_linux_amd64.tar.gz`
+- `github-issue-cms_<version>_linux_arm64.tar.gz`
+- `github-issue-cms_<version>_windows_amd64.zip`
+- `checksums.txt`
+
+Release flow:
+
+```bash
+git tag v0.6.2
+git push origin v0.6.2
+```
+
+For local validation:
+
+```bash
+task release:check
+task release:snapshot
+```
