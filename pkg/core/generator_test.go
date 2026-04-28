@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v67/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -211,7 +211,7 @@ func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 		issueRepo: &stubIssueStore{
 			issues: []*github.Issue{
 				{
-					Number:    github.Int(1),
+					Number:    github.Ptr(1),
 					Title:     generatorStringPtr("Issue 1"),
 					Body:      generatorStringPtr("Body 1"),
 					CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
@@ -219,7 +219,7 @@ func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 					State:     generatorStringPtr("closed"),
 				},
 				{
-					Number:    github.Int(2),
+					Number:    github.Ptr(2),
 					Title:     generatorStringPtr("Issue 2"),
 					Body:      generatorStringPtr("Body 2"),
 					CreatedAt: generatorParseTime("2021-01-02T00:00:00Z"),
@@ -305,7 +305,7 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, username, reposito
 		if resp.NextPage == 0 {
 			break
 		}
-		opts.Page = resp.NextPage
+		opts.ListOptions.Page = resp.NextPage
 	}
 
 	return allIssues, nil
