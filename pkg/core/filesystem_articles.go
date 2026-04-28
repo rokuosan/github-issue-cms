@@ -96,28 +96,28 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 }
 
 func resolveArticleDirectory(conf config.Config, datetime time.Time) (string, error) {
-	dest := conf.Hugo.Directory.Articles
+	dest := conf.Output.Articles.Directory
 	if dest == "" {
-		return "", fmt.Errorf("hugo directory is not set")
+		return "", fmt.Errorf("output articles directory is not set")
 	}
 	return filepath.Clean(config.CompileTimeTemplate(datetime, dest)), nil
 }
 
 func resolveArticlePath(conf config.Config, datetime time.Time, directory string) (string, error) {
-	filename := conf.Hugo.Filename.Articles
+	filename := conf.Output.Articles.Filename
 	if filename == "" {
-		return "", fmt.Errorf("hugo filename is not set")
+		return "", fmt.Errorf("output articles filename is not set")
 	}
 	filename = config.CompileTimeTemplate(datetime, filename)
 	return filepath.Join(directory, filename), nil
 }
 
 func resolveImageOutput(conf config.Config, datetime time.Time) (string, string, error) {
-	imageDir := conf.Hugo.Directory.Images
+	imageDir := conf.Output.Images.Directory
 	if imageDir == "" {
-		return "", "", fmt.Errorf("hugo image directory is not set")
+		return "", "", fmt.Errorf("output images directory is not set")
 	}
-	imageURLBase := config.CompileTimeTemplate(datetime, conf.Hugo.Url.Images)
+	imageURLBase := config.CompileTimeTemplate(datetime, conf.Output.Images.URL)
 	return config.CompileTimeTemplate(datetime, imageDir), imageURLBase, nil
 }
 

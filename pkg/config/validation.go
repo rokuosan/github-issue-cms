@@ -26,12 +26,16 @@ func (c *Config) validate() error {
 }
 
 func (c *Config) WarnDeprecatedOptions() bool {
-	if c.Hugo.Url.AppendSlash {
+	if c.Hugo == nil {
+		return true
+	}
+	if c.Hugo.Url != nil && c.Hugo.Url.AppendSlash {
 		slog.Warn("hugo.url.appendSlash is deprecated. This option will be ignored.")
 	}
 	if c.Hugo.Bundle != "" {
 		slog.Warn("hugo.bundle is deprecated. This option will be ignored.")
 	}
+	slog.Warn("The 'hugo' config section is deprecated. Use 'output' instead.")
 
 	return true
 }

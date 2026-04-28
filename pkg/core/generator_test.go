@@ -32,8 +32,8 @@ func TestNewArticleGenerator(t *testing.T) {
 
 func TestArticleGenerator_ConvertIssueToArticle(t *testing.T) {
 	conf := *config.NewConfig()
-	conf.Hugo.Url.Images = "/images"
-	conf.Hugo.Filename.Images = "[:id].png"
+	conf.Output.Images.URL = "/images"
+	conf.Output.Images.Filename = "[:id].png"
 
 	gen, err := NewArticleGenerator(conf, "test-token")
 	assert.NoError(t, err)
@@ -77,10 +77,10 @@ func TestArticleGenerator_ConvertPullRequest(t *testing.T) {
 func TestArticleGenerator_SaveArticle(t *testing.T) {
 	tempDir := t.TempDir()
 	conf := *config.NewConfig()
-	conf.Hugo.Directory.Articles = tempDir + "/articles"
-	conf.Hugo.Directory.Images = tempDir + "/images"
-	conf.Hugo.Filename.Articles = "%Y-%m-%d.md"
-	conf.Hugo.Filename.Images = "[:id].png"
+	conf.Output.Articles.Directory = tempDir + "/articles"
+	conf.Output.Images.Directory = tempDir + "/images"
+	conf.Output.Articles.Filename = "%Y-%m-%d.md"
+	conf.Output.Images.Filename = "[:id].png"
 
 	gen, err := NewArticleGenerator(conf, "test-token")
 	assert.NoError(t, err)
@@ -179,10 +179,10 @@ func TestArticleGenerator_Generate(t *testing.T) {
 
 	tempDir := t.TempDir()
 	conf := *config.NewConfig()
-	conf.Hugo.Directory.Articles = tempDir + "/articles"
-	conf.Hugo.Directory.Images = tempDir + "/images"
-	conf.Hugo.Filename.Articles = "%Y-%m-%d.md"
-	conf.Hugo.Filename.Images = "[:id].png"
+	conf.Output.Articles.Directory = tempDir + "/articles"
+	conf.Output.Images.Directory = tempDir + "/images"
+	conf.Output.Articles.Filename = "%Y-%m-%d.md"
+	conf.Output.Images.Filename = "[:id].png"
 
 	// Create a mock IssueRepository.
 	issueRepo := newMockIssueRepository(server.URL)

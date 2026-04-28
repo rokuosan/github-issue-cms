@@ -20,8 +20,8 @@ func TestNewArticleService(t *testing.T) {
 
 func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 	conf := *config.NewConfig()
-	conf.Hugo.Url.Images = "/images/%Y-%m-%d"
-	conf.Hugo.Filename.Images = "[:id].png"
+	conf.Output.Images.URL = "/images/%Y-%m-%d"
+	conf.Output.Images.Filename = "[:id].png"
 
 	service := NewArticleService(conf)
 

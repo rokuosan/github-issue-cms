@@ -2,23 +2,21 @@ github:
   username: 'rokuosan'
   repository: 'github-issue-cms'
 
-hugo:
-  filename:
-    articles: '%Y-%m-%d_%H%M%S.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts'
-    images: 'static/images/%Y-%m-%d_%H%M%S'
-  url:
-    images: '/images/%Y-%m-%d_%H%M%S'
+output:
+  articles:
+    directory: 'content/posts'
+    filename: '%Y-%m-%d_%H%M%S.md'
+  images:
+    directory: 'static/images/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: '/images/%Y-%m-%d_%H%M%S'
 
 # For page bundle
-# hugo:
-#   filename:
-#     articles: 'index.md'
-#     images: '[:id].png'
-#   directory:
-#     articles: 'content/posts/%Y-%m-%d_%H%M%S'
-#     images: 'content/posts/%Y-%m-%d_%H%M%S'
-#   url:
-#     images: ''
+# output:
+#   articles:
+#     directory: 'content/posts/%Y-%m-%d_%H%M%S'
+#     filename: 'index.md'
+#   images:
+#     directory: 'content/posts/%Y-%m-%d_%H%M%S'
+#     filename: '[:id].png'
+#     url: ''
