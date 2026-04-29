@@ -32,18 +32,18 @@ func TestNewArticleGenerator(t *testing.T) {
 
 func TestArticleGenerator_ConvertIssueToArticle(t *testing.T) {
 	conf := *config.NewConfig()
-	conf.Output.Images.URL = "/images"
+	conf.Output.Images.BaseURL = Ptr("/images")
 	conf.Output.Images.Filename = "[:id].png"
 
 	gen, err := NewArticleGenerator(conf, "test-token")
 	assert.NoError(t, err)
 
 	issue := &github.Issue{
-		Title:     generatorStringPtr("Test Issue"),
-		Body:      generatorStringPtr("Test content"),
+		Title:     Ptr("Test Issue"),
+		Body:      Ptr("Test content"),
 		CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
-		User:      &github.User{Login: generatorStringPtr("testuser")},
-		State:     generatorStringPtr("closed"),
+		User:      &github.User{Login: Ptr("testuser")},
+		State:     Ptr("closed"),
 		Labels:    []*github.Label{},
 	}
 
@@ -61,11 +61,11 @@ func TestArticleGenerator_ConvertPullRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	pr := &github.Issue{
-		Title:            generatorStringPtr("PR Title"),
-		Body:             generatorStringPtr("PR content"),
+		Title:            Ptr("PR Title"),
+		Body:             Ptr("PR content"),
 		CreatedAt:        generatorParseTime("2021-01-01T00:00:00Z"),
-		User:             &github.User{Login: generatorStringPtr("user")},
-		State:            generatorStringPtr("open"),
+		User:             &github.User{Login: Ptr("user")},
+		State:            Ptr("open"),
 		Labels:           []*github.Label{},
 		PullRequestLinks: &github.PullRequestLinks{},
 	}
@@ -86,11 +86,11 @@ func TestArticleGenerator_SaveArticle(t *testing.T) {
 	assert.NoError(t, err)
 
 	issue := &github.Issue{
-		Title:     generatorStringPtr("Test Article"),
-		Body:      generatorStringPtr("Content"),
+		Title:     Ptr("Test Article"),
+		Body:      Ptr("Content"),
 		CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
-		User:      &github.User{Login: generatorStringPtr("testuser")},
-		State:     generatorStringPtr("closed"),
+		User:      &github.User{Login: Ptr("testuser")},
+		State:     Ptr("closed"),
 		Labels:    []*github.Label{},
 	}
 
@@ -212,19 +212,19 @@ func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 			issues: []*github.Issue{
 				{
 					Number:    github.Ptr(1),
-					Title:     generatorStringPtr("Issue 1"),
-					Body:      generatorStringPtr("Body 1"),
+					Title:     Ptr("Issue 1"),
+					Body:      Ptr("Body 1"),
 					CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
-					User:      &github.User{Login: generatorStringPtr("user")},
-					State:     generatorStringPtr("closed"),
+					User:      &github.User{Login: Ptr("user")},
+					State:     Ptr("closed"),
 				},
 				{
 					Number:    github.Ptr(2),
-					Title:     generatorStringPtr("Issue 2"),
-					Body:      generatorStringPtr("Body 2"),
+					Title:     Ptr("Issue 2"),
+					Body:      Ptr("Body 2"),
 					CreatedAt: generatorParseTime("2021-01-02T00:00:00Z"),
-					User:      &github.User{Login: generatorStringPtr("user")},
-					State:     generatorStringPtr("closed"),
+					User:      &github.User{Login: Ptr("user")},
+					State:     Ptr("closed"),
 				},
 			},
 		},
@@ -249,10 +249,6 @@ func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 }
 
 // Helper functions.
-
-func generatorStringPtr(s string) *string {
-	return &s
-}
 
 func generatorParseTime(s string) *github.Timestamp {
 	t, err := time.Parse(time.RFC3339, s)

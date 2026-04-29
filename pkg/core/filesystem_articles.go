@@ -117,7 +117,7 @@ func resolveImageOutput(conf config.Config, datetime time.Time) (string, string,
 	if imageDir == "" {
 		return "", "", fmt.Errorf("output images directory is not set")
 	}
-	imageURLBase := config.CompileTimeTemplate(datetime, conf.Output.Images.URL)
+	imageURLBase := config.CompileTimeTemplate(datetime, conf.Output.Images.URL())
 	return config.CompileTimeTemplate(datetime, imageDir), imageURLBase, nil
 }
 

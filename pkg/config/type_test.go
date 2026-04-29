@@ -34,8 +34,8 @@ func TestConfigNormalize_LegacyHugoDirectoryFields(t *testing.T) {
 	if conf.Output.Images.Filename != "[:id].png" {
 		t.Fatalf("images filename = %q", conf.Output.Images.Filename)
 	}
-	if conf.Output.Images.URL != "/images/%Y-%m-%d" {
-		t.Fatalf("images url = %q", conf.Output.Images.URL)
+	if conf.Output.Images.URL() != "/images/%Y-%m-%d" {
+		t.Fatalf("images url = %q", conf.Output.Images.URL())
 	}
 }
 
@@ -50,7 +50,7 @@ func TestConfigNormalize_PrefersOutputOverLegacyHugo(t *testing.T) {
 			Images: &OutputImagesConfig{
 				Directory: "static/custom",
 				Filename:  "custom.png",
-				URL:       "/custom",
+				BaseURL:   Ptr("/custom"),
 			},
 		},
 		Hugo: &HugoConfig{
@@ -82,7 +82,51 @@ func TestConfigNormalize_PrefersOutputOverLegacyHugo(t *testing.T) {
 	if conf.Output.Images.Filename != "custom.png" {
 		t.Fatalf("images filename = %q", conf.Output.Images.Filename)
 	}
-	if conf.Output.Images.URL != "/custom" {
-		t.Fatalf("images url = %q", conf.Output.Images.URL)
+	if conf.Output.Images.URL() != "/custom" {
+		t.Fatalf("images url = %q", conf.Output.Images.URL())
+	}
+}
+
+func TestConfigNormalize_PreservesExplicitEmptyOutputImageURL(t *testing.T) {
+	conf := Config{
+		GitHub: NewGitHubConfig(),
+		Output: &OutputConfig{
+			Articles: &OutputArticlesConfig{},
+			Images: &OutputImagesConfig{
+				BaseURL: Ptr(""),
+			},
+		},
+		Hugo: &HugoConfig{
+			Url: &HugoURLConfig{
+				Images: "/images",
+			},
+		},
+	}
+
+	conf.normalize()
+
+	if conf.Output.Images.URL() != "" {
+		t.Fatalf("images url = %q", conf.Output.Images.URL())
+	}
+}
+
+func TestConfigNormalize_BackfillsMissingOutputImageURLFromLegacyHugo(t *testing.T) {
+	conf := Config{
+		GitHub: NewGitHubConfig(),
+		Output: &OutputConfig{
+			Articles: &OutputArticlesConfig{},
+			Images:   &OutputImagesConfig{},
+		},
+		Hugo: &HugoConfig{
+			Url: &HugoURLConfig{
+				Images: "/images",
+			},
+		},
+	}
+
+	conf.normalize()
+
+	if conf.Output.Images.URL() != "/images" {
+		t.Fatalf("images url = %q", conf.Output.Images.URL())
 	}
 }

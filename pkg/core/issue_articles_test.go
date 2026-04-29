@@ -20,7 +20,7 @@ func TestNewArticleService(t *testing.T) {
 
 func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 	conf := *config.NewConfig()
-	conf.Output.Images.URL = "/images/%Y-%m-%d"
+	conf.Output.Images.BaseURL = Ptr("/images/%Y-%m-%d")
 	conf.Output.Images.Filename = "[:id].png"
 
 	service := NewArticleService(conf)
@@ -33,11 +33,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "基本的なIssue変換",
 			issue: &github.Issue{
-				Title:     stringPtr("Test Issue"),
-				Body:      stringPtr("Test body content"),
+				Title:     Ptr("Test Issue"),
+				Body:      Ptr("Test body content"),
 				CreatedAt: parseTime("2021-01-01T12:00:00Z"),
-				User:      &github.User{Login: stringPtr("testuser")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("testuser")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -52,11 +52,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "open状態のIssue（下書き）",
 			issue: &github.Issue{
-				Title:     stringPtr("Draft Issue"),
-				Body:      stringPtr("Draft content"),
+				Title:     Ptr("Draft Issue"),
+				Body:      Ptr("Draft content"),
 				CreatedAt: parseTime("2021-06-15T10:30:00Z"),
-				User:      &github.User{Login: stringPtr("author")},
-				State:     stringPtr("open"),
+				User:      &github.User{Login: Ptr("author")},
+				State:     Ptr("open"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -68,14 +68,14 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "タグ付きIssue",
 			issue: &github.Issue{
-				Title:     stringPtr("Tagged Issue"),
-				Body:      stringPtr("Content"),
+				Title:     Ptr("Tagged Issue"),
+				Body:      Ptr("Content"),
 				CreatedAt: parseTime("2021-03-10T00:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels: []*github.Label{
-					{Name: stringPtr("bug")},
-					{Name: stringPtr("enhancement")},
+					{Name: Ptr("bug")},
+					{Name: Ptr("enhancement")},
 				},
 			},
 			want: map[string]interface{}{
@@ -85,13 +85,13 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "マイルストーン付きIssue",
 			issue: &github.Issue{
-				Title:     stringPtr("Milestone Issue"),
-				Body:      stringPtr("Content"),
+				Title:     Ptr("Milestone Issue"),
+				Body:      Ptr("Content"),
 				CreatedAt: parseTime("2021-05-01T00:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
-				Milestone: &github.Milestone{Title: stringPtr("v1.0")},
+				Milestone: &github.Milestone{Title: Ptr("v1.0")},
 			},
 			want: map[string]interface{}{
 				"category": "v1.0",
@@ -100,11 +100,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "フロントマター付きIssue",
 			issue: &github.Issue{
-				Title:     stringPtr("FrontMatter Issue"),
-				Body:      stringPtr("```\nauthor: Custom Author\ncustom: value\n```\n\nContent here"),
+				Title:     Ptr("FrontMatter Issue"),
+				Body:      Ptr("```\nauthor: Custom Author\ncustom: value\n```\n\nContent here"),
 				CreatedAt: parseTime("2021-02-01T00:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -115,11 +115,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "YAML front matter issue",
 			issue: &github.Issue{
-				Title:     stringPtr("YAML FrontMatter Issue"),
-				Body:      stringPtr("---\nauthor: YAML Author\ncustom: value\n---\n\nContent here"),
+				Title:     Ptr("YAML FrontMatter Issue"),
+				Body:      Ptr("---\nauthor: YAML Author\ncustom: value\n---\n\nContent here"),
 				CreatedAt: parseTime("2021-02-01T00:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -130,11 +130,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "TOML front matter issue",
 			issue: &github.Issue{
-				Title:     stringPtr("TOML FrontMatter Issue"),
-				Body:      stringPtr("+++\nauthor = \"TOML Author\"\ncustom = \"value\"\n+++\n\nContent here"),
+				Title:     Ptr("TOML FrontMatter Issue"),
+				Body:      Ptr("+++\nauthor = \"TOML Author\"\ncustom = \"value\"\n+++\n\nContent here"),
 				CreatedAt: parseTime("2021-02-01T00:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -145,11 +145,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "Markdown画像付きIssue",
 			issue: &github.Issue{
-				Title:     stringPtr("Image Issue"),
-				Body:      stringPtr("![image](https://example.com/image1.png)\n\n![image](https://example.com/image2.png)"),
+				Title:     Ptr("Image Issue"),
+				Body:      Ptr("![image](https://example.com/image1.png)\n\n![image](https://example.com/image2.png)"),
 				CreatedAt: parseTime("2021-04-01T15:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -159,11 +159,11 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 		{
 			name: "HTML画像付きIssue",
 			issue: &github.Issue{
-				Title:     stringPtr("HTML Image Issue"),
-				Body:      stringPtr(`<img width="100" alt="test" src="https://example.com/test.png">`),
+				Title:     Ptr("HTML Image Issue"),
+				Body:      Ptr(`<img width="100" alt="test" src="https://example.com/test.png">`),
 				CreatedAt: parseTime("2021-07-01T00:00:00Z"),
-				User:      &github.User{Login: stringPtr("user")},
-				State:     stringPtr("closed"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
@@ -216,11 +216,11 @@ func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
 	service := NewArticleService(*config.NewConfig())
 
 	pr := &github.Issue{
-		Title:            stringPtr("PR Title"),
-		Body:             stringPtr("PR body"),
+		Title:            Ptr("PR Title"),
+		Body:             Ptr("PR body"),
 		CreatedAt:        parseTime("2021-01-01T00:00:00Z"),
-		User:             &github.User{Login: stringPtr("user")},
-		State:            stringPtr("open"),
+		User:             &github.User{Login: Ptr("user")},
+		State:            Ptr("open"),
 		Labels:           []*github.Label{},
 		PullRequestLinks: &github.PullRequestLinks{},
 	}
@@ -233,11 +233,11 @@ func TestArticleService_ConvertIssueToArticle_CRRemoval(t *testing.T) {
 	service := NewArticleService(*config.NewConfig())
 
 	issue := &github.Issue{
-		Title:     stringPtr("Test"),
-		Body:      stringPtr("Line1\r\nLine2\r\nLine3"),
+		Title:     Ptr("Test"),
+		Body:      Ptr("Line1\r\nLine2\r\nLine3"),
 		CreatedAt: parseTime("2021-01-01T00:00:00Z"),
-		User:      &github.User{Login: stringPtr("user")},
-		State:     stringPtr("closed"),
+		User:      &github.User{Login: Ptr("user")},
+		State:     Ptr("closed"),
 		Labels:    []*github.Label{},
 	}
 
@@ -306,10 +306,6 @@ func TestMetadataParser_Parse(t *testing.T) {
 			assertEqualCmp(t, tt.wantParsed, block.Values.Values())
 		})
 	}
-}
-
-func stringPtr(s string) *string {
-	return &s
 }
 
 func parseTime(s string) *github.Timestamp {

@@ -25,9 +25,9 @@ type OutputArticlesConfig struct {
 }
 
 type OutputImagesConfig struct {
-	Directory string `yaml:"directory" mapstructure:"directory"`
-	Filename  string `yaml:"filename" mapstructure:"filename"`
-	URL       string `yaml:"url" mapstructure:"url"`
+	Directory string  `yaml:"directory" mapstructure:"directory"`
+	Filename  string  `yaml:"filename" mapstructure:"filename"`
+	BaseURL   *string `yaml:"url" mapstructure:"url"`
 }
 
 type HugoConfig struct {
@@ -98,11 +98,19 @@ func NewOutputArticlesConfig() *OutputArticlesConfig {
 }
 
 func NewOutputImagesConfig() *OutputImagesConfig {
+	url := "/images/%Y-%m-%d_%H%M%S"
 	return &OutputImagesConfig{
 		Directory: "static/images/%Y-%m-%d_%H%M%S",
 		Filename:  "[:id].png",
-		URL:       "/images/%Y-%m-%d_%H%M%S",
+		BaseURL:   &url,
 	}
+}
+
+func (c *OutputImagesConfig) URL() string {
+	if c == nil || c.BaseURL == nil {
+		return ""
+	}
+	return *c.BaseURL
 }
 
 func (c *Config) normalize() {
@@ -144,8 +152,9 @@ func (c *Config) normalize() {
 		if c.Output.Images.Filename == "" {
 			c.Output.Images.Filename = c.Hugo.Images.Filename
 		}
-		if c.Output.Images.URL == "" {
-			c.Output.Images.URL = c.Hugo.Images.URL
+		if c.Output.Images.BaseURL == nil {
+			url := c.Hugo.Images.URL
+			c.Output.Images.BaseURL = &url
 		}
 	}
 
@@ -165,7 +174,8 @@ func (c *Config) normalize() {
 			c.Output.Images.Filename = c.Hugo.Filename.Images
 		}
 	}
-	if c.Hugo.Url != nil && c.Output.Images.URL == "" {
-		c.Output.Images.URL = c.Hugo.Url.Images
+	if c.Hugo.Url != nil && c.Output.Images.BaseURL == nil {
+		url := c.Hugo.Url.Images
+		c.Output.Images.BaseURL = &url
 	}
 }

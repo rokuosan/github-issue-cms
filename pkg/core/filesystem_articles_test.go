@@ -32,7 +32,7 @@ func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
 	conf := *config.NewConfig()
 	conf.Output.Articles.Directory = filepath.Join(tempDir, "content", "%Y-%m-%d")
 	conf.Output.Images.Directory = filepath.Join(tempDir, "static", "images", "%Y-%m-%d")
-	conf.Output.Images.URL = "/images/%Y-%m-%d"
+	conf.Output.Images.BaseURL = Ptr("/images/%Y-%m-%d")
 	conf.Output.Articles.Filename = "index.md"
 
 	imageURL := "https://example.com/image.jpeg"
