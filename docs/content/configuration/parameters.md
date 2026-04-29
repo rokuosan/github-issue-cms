@@ -15,15 +15,14 @@ github:
   username: 'rokuosan'
   repository: 'github-issue-cms'
 
-hugo:
-  filename:
-    articles: '%Y-%m-%d_%H%M%S.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts'
-    images: 'static/images/%Y-%m-%d_%H%M%S'
-  url:
-    images: '/images/%Y-%m-%d_%H%M%S'
+output:
+  articles:
+    directory: 'content/posts'
+    filename: '%Y-%m-%d_%H%M%S.md'
+  images:
+    directory: 'static/images/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: '/images/%Y-%m-%d_%H%M%S'
 ```
 
 ## Configuration Items
@@ -35,25 +34,22 @@ GitHub settings.
 - `username`: GitHub username
 - `repository`: Repository name to fetch issues from
 
-### `hugo`
+### `output`
 
-Hugo settings.
+Output settings.
 
-#### `filename`
+#### `articles`
 
-- `articles`: Article filename
-- `images`: Image filename
+- `directory`: Directory to save articles
+- `filename`: Article filename
+
+#### `images`
+
+- `directory`: Directory to save images
+- `filename`: Image filename
+- `url`: Image URL referenced from Markdown
 
 `[:id]` will be replaced with the image ID. The image ID is unique within each issue and assigned sequentially.
-
-#### `directory`
-
-- `articles`: Directory to save articles
-- `images`: Directory to save images
-
-#### `url`
-
-- `images`: Image URL referenced from Markdown
 
 ## Placeholders
 
@@ -74,15 +70,14 @@ These placeholders can be used in the same format as `strftime`.
 
 #### `gic.config.yaml`
 ```yaml
-hugo:
-  filename:
-    articles: 'index.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts/%Y-%m-%d_%H%M%S'
-    images: 'content/posts/%Y-%m-%d_%H%M%S'
-  url:
-    images: ''
+output:
+  articles:
+    directory: 'content/posts/%Y-%m-%d_%H%M%S'
+    filename: 'index.md'
+  images:
+    directory: 'content/posts/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: ''
 ```
 
 #### Output Example

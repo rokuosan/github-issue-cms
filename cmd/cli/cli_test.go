@@ -18,15 +18,17 @@ func TestNewRootCommand(t *testing.T) {
 
 	// Ensure subcommands are registered.
 	commands := cmd.Commands()
-	assert.GreaterOrEqual(t, len(commands), 3, "Should have at least 3 subcommands")
+	assert.GreaterOrEqual(t, len(commands), 4, "Should have at least 4 subcommands")
 
-	var hasGenerate, hasInit, hasVersion bool
+	var hasGenerate, hasInit, hasMigrate, hasVersion bool
 	for _, subCmd := range commands {
 		switch subCmd.Use {
 		case "generate":
 			hasGenerate = true
 		case "init":
 			hasInit = true
+		case "migrate":
+			hasMigrate = true
 		case "version":
 			hasVersion = true
 		}
@@ -34,6 +36,7 @@ func TestNewRootCommand(t *testing.T) {
 
 	assert.True(t, hasGenerate, "Should have 'generate' subcommand")
 	assert.True(t, hasInit, "Should have 'init' subcommand")
+	assert.True(t, hasMigrate, "Should have 'migrate' subcommand")
 	assert.True(t, hasVersion, "Should have 'version' subcommand")
 }
 

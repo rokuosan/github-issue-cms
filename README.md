@@ -1,13 +1,12 @@
-# GitHub Issue-based headless CMS for Hugo
+# GitHub Issue-based headless CMS
 
-A headless CMS for Hugo using GitHub Issues.
+A headless CMS using GitHub Issues.
 
 Issues are treated as articles.
 
 ## Prerequisites
 
 - Go
-- Hugo
 - GitHub Token
 
 ## Installation
@@ -29,16 +28,18 @@ github:
   username: '<YOUR_GITHUB_USERNAME>'
   repository: '<YOUR_GITHUB_REPOSITORY>'
 
-hugo:
-  filename:
-    articles: '%Y-%m-%d_%H%M%S.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts'
-    images: 'static/images/%Y-%m-%d_%H%M%S'
-  url:
-    images: '/images/%Y-%m-%d_%H%M%S'
+output:
+  articles:
+    directory: 'content/posts'
+    filename: '%Y-%m-%d_%H%M%S.md'
+  images:
+    directory: 'static/images/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: '/images/%Y-%m-%d_%H%M%S'
 ```
+
+If you already have a legacy `hugo:` config section, it is still readable in `v1.0.0`.
+Run `github-issue-cms migrate` to rewrite it to the canonical `output:` schema.
 
 ### 3. Run
 
@@ -50,7 +51,7 @@ $ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
 
 If your repository has issues and attached images, they will be exported like this tree.
 
-These directories are compatible with Hugo directory structure, so you can quickly deploy this application to your Hugo site.
+These output paths are configurable, so you can adapt them to your site or build pipeline.
 
 ```bash
 $ tree --dirsfirst

@@ -29,6 +29,7 @@ func load() error {
 		return err
 	}
 
+	config.normalize()
 	return config.validate()
 }
 
@@ -41,23 +42,20 @@ func Reload() (Config, error) {
 
 // Generate generates a configuration file.
 func Generate() error {
-	viperInitialize()
+	return Write(*NewConfig())
+}
 
-	c := NewConfig()
+// Write writes the configuration file using the canonical schema.
+func Write(conf Config) error {
+	conf.normalize()
+	conf.Hugo = nil
 
-	data, err := yaml.Marshal(c)
+	data, err := yaml.Marshal(conf)
 	if err != nil {
 		return err
 	}
 
-	file, err := os.Create(GetConfigPath())
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.Write(data)
-	return err
+	return os.WriteFile(GetConfigPath(), data, 0o644)
 }
 
 // Get returns a configuration.

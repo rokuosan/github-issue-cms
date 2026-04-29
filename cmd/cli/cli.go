@@ -21,12 +21,12 @@ func NewRootCommand() *cobra.Command {
 
 	rootCmd := &cobra.Command{
 		Use:           "github-issue-cms",
-		Short:         "Generate articles from GitHub issues for Hugo",
+		Short:         "Generate articles from GitHub issues",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		Long: `GitHub Issue-based headless CMS for Hugo.
+		Long: `GitHub Issue-based headless CMS.
 
-This tool converts GitHub Issues into Hugo-compatible markdown articles
+This tool converts GitHub Issues into markdown articles
 with frontmatter and downloads attached images.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			configureLogger(verbosity)
@@ -39,6 +39,7 @@ with frontmatter and downloads attached images.`,
 	// Register subcommands.
 	rootCmd.AddCommand(subcommand.NewGenerateCommand())
 	rootCmd.AddCommand(subcommand.NewInitCommand())
+	rootCmd.AddCommand(subcommand.NewMigrateCommand())
 	rootCmd.AddCommand(subcommand.NewVersionCommand(&Version))
 
 	return rootCmd

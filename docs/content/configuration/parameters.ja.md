@@ -15,15 +15,14 @@ github:
   username: 'rokuosan'
   repository: 'github-issue-cms'
 
-hugo:
-  filename:
-    articles: '%Y-%m-%d_%H%M%S.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts'
-    images: 'static/images/%Y-%m-%d_%H%M%S'
-  url:
-    images: '/images/%Y-%m-%d_%H%M%S'
+output:
+  articles:
+    directory: 'content/posts'
+    filename: '%Y-%m-%d_%H%M%S.md'
+  images:
+    directory: 'static/images/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: '/images/%Y-%m-%d_%H%M%S'
 ```
 
 ## 設定項目
@@ -35,25 +34,22 @@ GitHub の設定です。
 - `username`: GitHub のユーザー名
 - `repository`: Issue を取得するリポジトリ名
 
-### `hugo`
+### `output`
 
-Hugo の設定です。
+出力先の設定です。
 
-#### `filename`
+#### `articles`
 
-- `articles`: 記事のファイル名
-- `images`: 画像のファイル名
+- `directory`: 記事の保存先ディレクトリ
+- `filename`: 記事のファイル名
+
+#### `images`
+
+- `directory`: 画像の保存先ディレクトリ
+- `filename`: 画像のファイル名
+- `url`: Markdownから参照される画像のURL
 
 ``[:id]`` は画像の ID に置き換わります。画像の ID はそのIssue内部で一意で、連番で割り振られます。
-
-#### `directory`
-
-- `articles`: 記事の保存先ディレクトリ
-- `images`: 画像の保存先ディレクトリ
-
-#### `url`
-
-- `images`: Markdownから参照される画像のURL
 
 ## プレースホルダ
 
@@ -74,15 +70,14 @@ Hugo の設定です。
 
 #### `gic.config.yaml`
 ```yaml
-hugo:
-  filename:
-    articles: 'index.md'
-    images: '[:id].png'
-  directory:
-    articles: 'content/posts/%Y-%m-%d_%H%M%S'
-    images: 'content/posts/%Y-%m-%d_%H%M%S'
-  url:
-    images: ''
+output:
+  articles:
+    directory: 'content/posts/%Y-%m-%d_%H%M%S'
+    filename: 'index.md'
+  images:
+    directory: 'content/posts/%Y-%m-%d_%H%M%S'
+    filename: '[:id].png'
+    url: ''
 ```
 
 #### 出力例
