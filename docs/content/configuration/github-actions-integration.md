@@ -40,7 +40,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version-file: go.mod
+          go-version: '1.25.0'
 
       - name: Install github-issue-cms
         run: go install github.com/rokuosan/github-issue-cms@v1.0.0
@@ -59,4 +59,5 @@ jobs:
 - `contents: write` is required to commit generated files back to the repository.
 - `issues: read` is required to read issues through the GitHub API.
 - If you keep `gic.config.yaml` in the repository root, no extra setup is required.
+- If your repository is a Go module and has a root `go.mod`, you can replace `go-version` with `go-version-file: go.mod`.
 - Use `github-issue-cms -v generate --token=...` if you want more logs in the Actions output.

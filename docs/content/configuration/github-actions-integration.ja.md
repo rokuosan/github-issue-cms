@@ -40,7 +40,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version-file: go.mod
+          go-version: '1.25.0'
 
       - name: Install github-issue-cms
         run: go install github.com/rokuosan/github-issue-cms@v1.0.0
@@ -59,4 +59,5 @@ jobs:
 - 生成ファイルをリポジトリへコミットするために `contents: write` が必要です。
 - GitHub API で Issue を読むために `issues: read` が必要です。
 - `gic.config.yaml` をリポジトリルートに置く構成であれば、追加設定は不要です。
+- リポジトリが Go module で、ルートに `go.mod` がある場合は `go-version` の代わりに `go-version-file: go.mod` を利用できます。
 - Actions のログを増やしたい場合は `github-issue-cms -v generate --token=...` を利用してください。
