@@ -25,9 +25,13 @@ func (HugoArticleRenderer) Render(article *Article) (string, error) {
 	rendered := article.Clone()
 	applyFrontMatterOverrides(rendered, extra)
 
-	extraFrontMatter, err := NewFrontMatter(extra).MarshalYAML()
-	if err != nil {
-		return "", err
+	extraFrontMatter := []byte(nil)
+	if len(extra) > 0 {
+		var err error
+		extraFrontMatter, err = NewFrontMatter(extra).MarshalYAML()
+		if err != nil {
+			return "", err
+		}
 	}
 
 	partial, err := yaml.Marshal(rendered)
