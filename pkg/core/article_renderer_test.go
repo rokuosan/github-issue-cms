@@ -36,7 +36,6 @@ tags:
     - tag1
     - tag2
 draft: false
-{}
 ---
 
 Test content
@@ -88,7 +87,6 @@ categories: Original
 tags:
     - original
 draft: true
-{}
 ---
 
 Test content
