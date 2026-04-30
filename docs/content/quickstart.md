@@ -10,8 +10,8 @@ This page explains how to get started with GitHub Issue CMS.
 
 The following are required. Please prepare them in advance.
 
-- Go v1.22.1 (or higher)
-- Hugo extended
+- Go 1.25.0 or higher
+- GitHub repository with Issues enabled
 - GitHub Access Token
 
 ## Steps
@@ -23,7 +23,7 @@ The following are required. Please prepare them in advance.
 Run the following command:
 
 ```shell
-$ go install github.com/rokuosan/github-issue-cms@v0.6.1
+$ go install github.com/rokuosan/github-issue-cms@v1.0.0
 ```
 
 ### 2. Create configuration file
@@ -53,7 +53,7 @@ output:
 Run the following command to convert all issues from the target repository to Markdown:
 
 ```shell
-$ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>" -d
+$ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>"
 ```
 
 If issues have attached images, the output will be as follows:
@@ -77,6 +77,8 @@ $ tree --dirsfirst
 ```
 
 The output files and directories can be changed in ``gic.config.yaml``.
+
+If you want verbose logs, use `-v`. For debug logs, use `-vv`.
 
 For more information about ``gic.config.yaml`` settings, please refer to [gic.config.yaml Configuration](../configuration/parameters).
 

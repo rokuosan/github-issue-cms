@@ -10,8 +10,8 @@ weight: 1
 
 以下のものを利用します。事前に準備しておいてください。
 
-- Go v1.22.1 (or higher)
-- Hugo extended
+- Go 1.25.0 以上
+- Issues が有効な GitHub リポジトリ
 - GitHub Access Token
 
 ## 手順
@@ -23,7 +23,7 @@ weight: 1
 以下のコマンドを実行します。
 
 ```shell
-$ go install github.com/rokuosan/github-issue-cms@v0.6.1
+$ go install github.com/rokuosan/github-issue-cms@v1.0.0
 ```
 
 ### 2. コンフィグの作成
@@ -53,7 +53,7 @@ output:
 以下のコマンドを実行して、対象のリポジトリからすべてのIssueをMarkdownに変換します。
 
 ```shell
-$ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>" -d
+$ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>"
 ```
 
 もし、Issueに添付画像がある場合は以下のように出力されます。
@@ -77,6 +77,8 @@ $ tree --dirsfirst
 ```
 
 出力されるファイルやディレクトリは、``gic.config.yaml``で変更することができます。
+
+詳細ログを出したい場合は `-v`、デバッグログを出したい場合は `-vv` を利用してください。
 
 ``gic.config.yaml``の設定については、[gic.config.yaml の設定](../configuration/parameters)を参照してください。
 
