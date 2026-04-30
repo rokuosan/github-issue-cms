@@ -14,6 +14,8 @@ This page explains the configuration of `gic.config.yaml`.
 github:
   username: 'rokuosan'
   repository: 'github-issue-cms'
+  labels:
+    - 'article'
 
 output:
   articles:
@@ -33,6 +35,7 @@ GitHub settings.
 
 - `username`: GitHub username
 - `repository`: Repository name to fetch issues from
+- `labels`: Only fetch issues that have all specified labels
 
 ### `output`
 
