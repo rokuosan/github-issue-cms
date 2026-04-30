@@ -10,8 +10,8 @@ type Config struct {
 }
 
 type GitHubConfig struct {
-	Username   string `yaml:"username" mapstructure:"username"`
-	Repository string `yaml:"repository" mapstructure:"repository"`
+	Username   string   `yaml:"username" mapstructure:"username"`
+	Repository string   `yaml:"repository" mapstructure:"repository"`
 	Labels     []string `yaml:"labels,omitempty" mapstructure:"labels"`
 }
 

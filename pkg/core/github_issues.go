@@ -78,7 +78,7 @@ func (r *GitHubIssueRepository) listIssuesPage(ctx context.Context, query IssueL
 		query.Username,
 		query.Repository,
 		&github.IssueListByRepoOptions{
-			State: "all",
+			State:  "all",
 			Labels: query.Labels,
 			ListOptions: github.ListOptions{
 				PerPage: 100,
