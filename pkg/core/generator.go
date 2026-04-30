@@ -63,10 +63,15 @@ func NewArticleGeneratorWithLogger(conf config.Config, token string, logger *slo
 
 // GetIssues retrieves all issues from the specified repository.
 func (g *ArticleGenerator) GetIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
+	var labels []string
+	if g.config.GitHub != nil {
+		labels = g.config.GitHub.Labels
+	}
+
 	return g.issueRepo.ListIssues(ctx, IssueListQuery{
 		Username:   username,
 		Repository: repository,
-		Labels:     g.config.GitHub.Labels,
+		Labels:     labels,
 	})
 }
 
