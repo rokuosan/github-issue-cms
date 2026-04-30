@@ -22,6 +22,7 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 	conf := *config.NewConfig()
 	conf.Output.Images.BaseURL = Ptr("/images/%Y-%m-%d")
 	conf.Output.Images.Filename = "[:id].png"
+	conf.GitHub.Labels = []string{"published"}
 
 	service := NewArticleService(conf)
 
@@ -80,6 +81,23 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 			},
 			want: map[string]interface{}{
 				"tags": []string{"bug", "enhancement"},
+			},
+		},
+		{
+			name: "フィルタ用ラベルはタグから除外",
+			issue: &github.Issue{
+				Title:     Ptr("Filtered Label Issue"),
+				Body:      Ptr("Content"),
+				CreatedAt: parseTime("2021-03-10T00:00:00Z"),
+				User:      &github.User{Login: Ptr("user")},
+				State:     Ptr("closed"),
+				Labels: []*github.Label{
+					{Name: Ptr("published")},
+					{Name: Ptr("go")},
+				},
+			},
+			want: map[string]interface{}{
+				"tags": []string{"go"},
 			},
 		},
 		{

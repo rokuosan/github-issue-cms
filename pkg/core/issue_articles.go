@@ -79,8 +79,19 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 	images = append(images, s.findImages(content, regexHTMLImage, time, len(images))...)
 
 	var tags []string
+	excludedLabels := map[string]struct{}{}
+	if s.config.GitHub != nil {
+		excludedLabels = make(map[string]struct{}, len(s.config.GitHub.Labels))
+		for _, label := range s.config.GitHub.Labels {
+			excludedLabels[label] = struct{}{}
+		}
+	}
 	for _, label := range issue.Labels {
-		tags = append(tags, label.GetName())
+		name := label.GetName()
+		if _, ok := excludedLabels[name]; ok {
+			continue
+		}
+		tags = append(tags, name)
 	}
 
 	return &Article{
