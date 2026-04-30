@@ -154,6 +154,29 @@ func TestArticleGenerator_GetIssues(t *testing.T) {
 	assertEqualCmp(t, []string{"Test Issue 1", "Test Issue 2"}, []string{issues[0].GetTitle(), issues[1].GetTitle()})
 }
 
+func TestArticleGenerator_GetIssues_WithNilGitHubConfig(t *testing.T) {
+	conf := config.Config{}
+	issueRepo := &stubIssueStore{
+		issues: []*github.Issue{
+			{Title: Ptr("Test Issue")},
+		},
+	}
+
+	gen := &ArticleGenerator{
+		issueRepo: issueRepo,
+		service:   NewArticleService(conf),
+		config:    conf,
+		logger:    slog.Default(),
+	}
+
+	issues, err := gen.GetIssues(context.Background(), "testuser", "testrepo")
+	assert.NoError(t, err)
+	assert.Len(t, issues, 1)
+	assert.Nil(t, issueRepo.lastQuery.Labels)
+	assertEqualCmp(t, "testuser", issueRepo.lastQuery.Username)
+	assertEqualCmp(t, "testrepo", issueRepo.lastQuery.Repository)
+}
+
 func TestArticleGenerator_Generate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v3/repos/testuser/testrepo/issues" {
@@ -272,13 +295,14 @@ type mockIssueRepository struct {
 	client *github.Client
 }
 
-func (m *mockIssueRepository) ListIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
-	if username == "" || repository == "" {
+func (m *mockIssueRepository) ListIssues(ctx context.Context, query IssueListQuery) ([]*github.Issue, error) {
+	if query.Username == "" || query.Repository == "" {
 		return nil, fmt.Errorf("username and repository name are required")
 	}
 
 	opts := &github.IssueListByRepoOptions{
-		State: "all",
+		State:  "all",
+		Labels: query.Labels,
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},
@@ -286,7 +310,7 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, username, reposito
 
 	var allIssues []*github.Issue
 	for {
-		issues, resp, err := m.client.Issues.ListByRepo(ctx, username, repository, opts)
+		issues, resp, err := m.client.Issues.ListByRepo(ctx, query.Username, query.Repository, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -308,11 +332,13 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, username, reposito
 }
 
 type stubIssueStore struct {
-	issues []*github.Issue
-	err    error
+	issues    []*github.Issue
+	err       error
+	lastQuery IssueListQuery
 }
 
-func (s *stubIssueStore) ListIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
+func (s *stubIssueStore) ListIssues(ctx context.Context, query IssueListQuery) ([]*github.Issue, error) {
+	s.lastQuery = query
 	return s.issues, s.err
 }
 

@@ -81,7 +81,7 @@ func TestGitHubIssueRepository_ListIssues(t *testing.T) {
 		assert.NoError(t, err)
 		repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
-		issues, err := repo.ListIssues(context.Background(), "testuser", "testrepo")
+		issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
 		assert.NoError(t, err)
 		assert.NotNil(t, issues)
 		assertEqualCmp(t, []string{"Test Issue 1", "Test Issue 2"}, []string{issues[0].GetTitle(), issues[1].GetTitle()})
@@ -91,7 +91,7 @@ func TestGitHubIssueRepository_ListIssues(t *testing.T) {
 		client := github.NewClient(nil)
 		repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
-		issues, err := repo.ListIssues(context.Background(), "", "testrepo")
+		issues, err := repo.ListIssues(context.Background(), IssueListQuery{Repository: "testrepo"})
 		assert.Error(t, err)
 		assert.Nil(t, issues)
 		assert.Contains(t, err.Error(), "username and repository name are required")
@@ -101,7 +101,7 @@ func TestGitHubIssueRepository_ListIssues(t *testing.T) {
 		client := github.NewClient(nil)
 		repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
-		issues, err := repo.ListIssues(context.Background(), "testuser", "")
+		issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser"})
 		assert.Error(t, err)
 		assert.Nil(t, issues)
 		assert.Contains(t, err.Error(), "username and repository name are required")
@@ -157,7 +157,7 @@ func TestGitHubIssueRepository_ListIssues_FiltersPRs(t *testing.T) {
 	assert.NoError(t, err)
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
-	issues, err := repo.ListIssues(context.Background(), "testuser", "testrepo")
+	issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
 	assert.NoError(t, err)
 	assert.NotNil(t, issues)
 	assertEqualCmp(t, []string{"Real Issue", "Another Issue"}, []string{issues[0].GetTitle(), issues[1].GetTitle()})
@@ -207,7 +207,7 @@ func TestGitHubIssueRepository_ListIssues_Pagination(t *testing.T) {
 	assert.NoError(t, err)
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
-	issues, err := repo.ListIssues(context.Background(), "testuser", "testrepo")
+	issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
 	assert.NoError(t, err)
 	assert.NotNil(t, issues)
 	assertEqualCmp(t, []string{"Issue 1", "Issue 2"}, []string{issues[0].GetTitle(), issues[1].GetTitle()})
@@ -227,7 +227,7 @@ func TestGitHubIssueRepository_ListIssues_InvalidCredentials(t *testing.T) {
 	assert.NoError(t, err)
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
-	issues, err := repo.ListIssues(context.Background(), "testuser", "testrepo")
+	issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
 	assert.Error(t, err)
 	assert.Nil(t, issues)
 	assert.Contains(t, err.Error(), "invalid API token")
@@ -244,4 +244,43 @@ func TestNormalizeGitHubIssueError(t *testing.T) {
 
 	other := errors.New("some other error")
 	assert.Same(t, other, normalizeGitHubIssueError(other))
+}
+
+func TestGitHubIssueRepository_ListIssues_WithLabels(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v3/repos/testuser/testrepo/issues" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		assert.Equal(t, "bug,release", r.URL.Query().Get("labels"))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`[
+			{
+				"id": 1,
+				"number": 1,
+				"title": "Labeled Issue",
+				"body": "Test body",
+				"state": "closed",
+				"user": {"login": "testuser"},
+				"created_at": "2021-01-01T00:00:00Z"
+			}
+		]`))
+	}))
+	defer server.Close()
+
+	client := github.NewClient(nil)
+	client, err := client.WithEnterpriseURLs(server.URL, server.URL)
+	assert.NoError(t, err)
+	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
+
+	issues, err := repo.ListIssues(context.Background(), IssueListQuery{
+		Username:   "testuser",
+		Repository: "testrepo",
+		Labels:     []string{"bug", "release"},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, issues, 1)
+	assert.Equal(t, "Labeled Issue", issues[0].GetTitle())
 }

@@ -14,6 +14,8 @@ weight: 1
 github:
   username: 'rokuosan'
   repository: 'github-issue-cms'
+  labels:
+    - 'article'
 
 output:
   articles:
@@ -33,6 +35,7 @@ GitHub の設定です。
 
 - `username`: GitHub のユーザー名
 - `repository`: Issue を取得するリポジトリ名
+- `labels`: 指定したラベルをすべて持つ Issue のみ取得
 
 ### `output`
 

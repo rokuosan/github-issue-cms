@@ -10,8 +10,14 @@ import (
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 )
 
+type IssueListQuery struct {
+	Username   string
+	Repository string
+	Labels     []string
+}
+
 type IssueStore interface {
-	ListIssues(ctx context.Context, username, repository string) ([]*github.Issue, error)
+	ListIssues(ctx context.Context, query IssueListQuery) ([]*github.Issue, error)
 }
 
 type ArticleStore interface {
@@ -57,7 +63,16 @@ func NewArticleGeneratorWithLogger(conf config.Config, token string, logger *slo
 
 // GetIssues retrieves all issues from the specified repository.
 func (g *ArticleGenerator) GetIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
-	return g.issueRepo.ListIssues(ctx, username, repository)
+	var labels []string
+	if g.config.GitHub != nil {
+		labels = g.config.GitHub.Labels
+	}
+
+	return g.issueRepo.ListIssues(ctx, IssueListQuery{
+		Username:   username,
+		Repository: repository,
+		Labels:     labels,
+	})
 }
 
 // ConvertIssueToArticle converts an issue into an Article entity.

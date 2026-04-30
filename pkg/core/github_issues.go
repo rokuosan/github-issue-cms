@@ -39,8 +39,8 @@ func NewGitHubIssueRepositoryWithLogger(token string, logger *slog.Logger) (Issu
 }
 
 // ListIssues retrieves all issues from the specified repository.
-func (r *GitHubIssueRepository) ListIssues(ctx context.Context, username, repoName string) ([]*github.Issue, error) {
-	if username == "" || repoName == "" {
+func (r *GitHubIssueRepository) ListIssues(ctx context.Context, query IssueListQuery) ([]*github.Issue, error) {
+	if query.Username == "" || query.Repository == "" {
 		return nil, fmt.Errorf("username and repository name are required")
 	}
 
@@ -55,7 +55,7 @@ func (r *GitHubIssueRepository) ListIssues(ctx context.Context, username, repoNa
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		issuesAndPRs, resp, err := r.listIssuesPage(ctx, username, repoName, page)
+		issuesAndPRs, resp, err := r.listIssuesPage(ctx, query, page)
 
 		if err != nil {
 			return nil, normalizeGitHubIssueError(err)
@@ -72,13 +72,14 @@ func (r *GitHubIssueRepository) ListIssues(ctx context.Context, username, repoNa
 	return issues, nil
 }
 
-func (r *GitHubIssueRepository) listIssuesPage(ctx context.Context, username, repoName string, page int) ([]*github.Issue, *github.Response, error) {
+func (r *GitHubIssueRepository) listIssuesPage(ctx context.Context, query IssueListQuery, page int) ([]*github.Issue, *github.Response, error) {
 	return r.client.Issues.ListByRepo(
 		ctx,
-		username,
-		repoName,
+		query.Username,
+		query.Repository,
 		&github.IssueListByRepoOptions{
-			State: "all",
+			State:  "all",
+			Labels: query.Labels,
 			ListOptions: github.ListOptions{
 				PerPage: 100,
 				Page:    page,
