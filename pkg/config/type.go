@@ -12,6 +12,7 @@ type Config struct {
 type GitHubConfig struct {
 	Username   string `yaml:"username" mapstructure:"username"`
 	Repository string `yaml:"repository" mapstructure:"repository"`
+	Labels     []string `yaml:"labels,omitempty" mapstructure:"labels"`
 }
 
 type OutputConfig struct {
@@ -80,6 +81,7 @@ func NewGitHubConfig() *GitHubConfig {
 	return &GitHubConfig{
 		Username:   "<YOUR_USERNAME>",
 		Repository: "<YOUR_REPOSITORY>",
+		Labels:     nil,
 	}
 }
 

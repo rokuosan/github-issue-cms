@@ -272,13 +272,14 @@ type mockIssueRepository struct {
 	client *github.Client
 }
 
-func (m *mockIssueRepository) ListIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
-	if username == "" || repository == "" {
+func (m *mockIssueRepository) ListIssues(ctx context.Context, query IssueListQuery) ([]*github.Issue, error) {
+	if query.Username == "" || query.Repository == "" {
 		return nil, fmt.Errorf("username and repository name are required")
 	}
 
 	opts := &github.IssueListByRepoOptions{
 		State: "all",
+		Labels: query.Labels,
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},
@@ -286,7 +287,7 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, username, reposito
 
 	var allIssues []*github.Issue
 	for {
-		issues, resp, err := m.client.Issues.ListByRepo(ctx, username, repository, opts)
+		issues, resp, err := m.client.Issues.ListByRepo(ctx, query.Username, query.Repository, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +313,7 @@ type stubIssueStore struct {
 	err    error
 }
 
-func (s *stubIssueStore) ListIssues(ctx context.Context, username, repository string) ([]*github.Issue, error) {
+func (s *stubIssueStore) ListIssues(ctx context.Context, query IssueListQuery) ([]*github.Issue, error) {
 	return s.issues, s.err
 }
 
