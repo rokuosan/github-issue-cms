@@ -61,7 +61,7 @@ func NewImage(url, time string, id int) *Image {
 }
 
 func (a *Article) ParseDateTime() (time.Time, error) {
-	if t, err := time.Parse("2006-01-02T15:04:05Z", a.Date); err == nil {
+	if t, err := time.Parse(time.RFC3339, a.Date); err == nil {
 		return t, nil
 	}
 	if t, err := time.Parse("2006-01-02", a.Date); err == nil {

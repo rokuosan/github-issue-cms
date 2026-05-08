@@ -59,6 +59,12 @@ func TestArticle_ParseDateTime(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "RFC3339 offset format",
+			date:    "2021-02-03T04:05:06+09:00",
+			want:    time.Date(2021, 2, 3, 4, 5, 6, 0, time.FixedZone("+0900", 9*60*60)),
+			wantErr: false,
+		},
+		{
 			name:    "date only format",
 			date:    "2021-01-01",
 			want:    time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),

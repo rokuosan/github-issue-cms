@@ -2,8 +2,6 @@ package core
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,7 +47,10 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 		return err
 	}
 
-	datetime, err := article.ParseDateTime()
+	rendered := article.Clone()
+	applyFrontMatterOverrides(rendered, rendered.FrontMatter.Values())
+
+	datetime, err := rendered.ParseDateTime()
 	if err != nil {
 		return fmt.Errorf("failed to parse datetime: %w", err)
 	}
@@ -60,8 +62,6 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 	if err := createDirectoryIfNotExist(articleDir); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", articleDir, err)
 	}
-
-	rendered := article.Clone()
 
 	articlePath, err := resolveArticlePath(conf, datetime, articleDir)
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		filename, err := r.saveImage(ctx, image, imageDir)
+		filename, err := r.saveImage(ctx, image, imageDir, conf, datetime)
 		if err != nil {
 			r.logger.Error("Failed to download image", "url", image.URL, "error", err)
 			continue
@@ -131,7 +131,7 @@ func createFileAndWrite(path string, content string) error {
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
-func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Image, imageDir string) (string, error) {
+func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Image, imageDir string, conf config.Config, datetime time.Time) (string, error) {
 	if err := createDirectoryIfNotExist(imageDir); err != nil {
 		return "", fmt.Errorf("failed to create directory %s: %w", imageDir, err)
 	}
@@ -142,7 +142,10 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	}
 	defer asset.Body.Close()
 
-	filename := resolveImageBasename(image) + extensionFromContentType(asset.ContentType)
+	filename := resolveImageFilename(conf, image, datetime)
+	if filepath.Ext(filename) == "" {
+		filename += extensionFromContentType(asset.ContentType)
+	}
 	if filepath.Ext(filename) == "" {
 		filename += ".img"
 	}
@@ -161,9 +164,14 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	return filename, nil
 }
 
-func resolveImageBasename(image *Image) string {
-	sum := sha1.Sum([]byte(image.URL))
-	return hex.EncodeToString(sum[:])[:12]
+func resolveImageFilename(conf config.Config, image *Image, datetime time.Time) string {
+	filename := conf.Output.Images.Filename
+	if filename == "" {
+		filename = "[:id]"
+	}
+
+	filename = config.CompileTimeTemplate(datetime, filename)
+	return strings.ReplaceAll(filename, "[:id]", strconv.Itoa(image.ID))
 }
 
 func joinURLPath(base, filename string) string {
