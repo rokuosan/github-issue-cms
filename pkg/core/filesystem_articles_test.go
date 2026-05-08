@@ -115,6 +115,44 @@ func TestFileSystemArticleRepository_Save_UsesFrontMatterDateForOutputPaths(t *t
 	assertEqualCmp(t, "png", string(imageData))
 }
 
+func TestFileSystemArticleRepository_Save_AcceptsFrontMatterDateWithOffset(t *testing.T) {
+	tempDir := t.TempDir()
+
+	conf := *config.NewConfig()
+	conf.Output.Articles.Directory = filepath.Join(tempDir, "content", "%Y-%m-%d_%H%M%S")
+	conf.Output.Articles.Filename = "index.md"
+	conf.Output.Images.Directory = filepath.Join(tempDir, "content", "%Y-%m-%d_%H%M%S", "images")
+	conf.Output.Images.BaseURL = Ptr("/images/%Y-%m-%d_%H%M%S")
+	conf.Output.Images.Filename = "%H-[:id].png"
+
+	imageURL := "https://example.com/image.png"
+	repo := &FileSystemArticleRepository{
+		imageRepo: &fakeImageRepository{contentType: "image/png", body: "png"},
+		renderer:  NewHugoArticleRenderer(),
+		logger:    slog.Default(),
+	}
+
+	article := &Article{
+		Author:      "Author",
+		Title:       "Title",
+		Content:     "![image](" + imageURL + ")",
+		Date:        "2021-01-01T00:00:00Z",
+		FrontMatter: NewFrontMatter(map[string]any{"date": "2021-02-03T04:05:06+09:00"}),
+		Images: []*Image{
+			NewImage(imageURL, "2021-01-01_000000", 0),
+		},
+	}
+
+	err := repo.Save(context.Background(), article, conf)
+	require.NoError(t, err)
+
+	outputPath := filepath.Join(tempDir, "content", "2021-02-03_040506", "index.md")
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `date: "2021-02-03T04:05:06+09:00"`)
+	assert.Contains(t, string(data), "![image](/images/2021-02-03_040506/04-0.png)")
+}
+
 func TestResolveImageFilename_UsesResolvedArticleDatetime(t *testing.T) {
 	conf := *config.NewConfig()
 	conf.Output.Images.Filename = "%H-[:id].png"
