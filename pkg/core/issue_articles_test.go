@@ -222,36 +222,50 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 	}
 }
 
-func TestExtractGitHubHostedImages_DeduplicatesURLs(t *testing.T) {
-	content := strings.Join([]string{
-		"![a](https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111)",
-		`<img src="https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111">`,
-		"https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token",
-		"https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png",
-	}, "\n")
+func TestExtractGitHubHostedImages(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		wantURLs []string
+	}{
+		{
+			name: "deduplicates repeated URLs and keeps detection order",
+			content: strings.Join([]string{
+				"![a](https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111)",
+				`<img src="https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111">`,
+				"https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token",
+				"https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png",
+			}, "\n"),
+			wantURLs: []string{
+				"https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111",
+				"https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token",
+				"https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png",
+			},
+		},
+		{
+			name: "trims trailing backticks and punctuation",
+			content: strings.Join([]string{
+				"`https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111`",
+				"`https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token`,",
+			}, "\n"),
+			wantURLs: []string{
+				"https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111",
+				"https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token",
+			},
+		},
+	}
 
-	got := extractGitHubHostedImages(content, "2021-01-01_000000")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractGitHubHostedImages(tt.content, "2021-01-01_000000")
 
-	require.Len(t, got, 3)
-	assertEqualCmp(t, "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111", got[0].URL)
-	assertEqualCmp(t, 0, got[0].ID)
-	assertEqualCmp(t, "https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token", got[1].URL)
-	assertEqualCmp(t, 1, got[1].ID)
-	assertEqualCmp(t, "https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png", got[2].URL)
-	assertEqualCmp(t, 2, got[2].ID)
-}
-
-func TestExtractGitHubHostedImages_TrimsTrailingBackticks(t *testing.T) {
-	content := strings.Join([]string{
-		"`https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111`",
-		"`https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token`,",
-	}, "\n")
-
-	got := extractGitHubHostedImages(content, "2021-01-01_000000")
-
-	require.Len(t, got, 2)
-	assertEqualCmp(t, "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111", got[0].URL)
-	assertEqualCmp(t, "https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token", got[1].URL)
+			require.Len(t, got, len(tt.wantURLs))
+			for i, wantURL := range tt.wantURLs {
+				assertEqualCmp(t, wantURL, got[i].URL)
+				assertEqualCmp(t, i, got[i].ID)
+			}
+		})
+	}
 }
 
 func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
