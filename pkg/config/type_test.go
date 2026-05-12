@@ -130,3 +130,28 @@ func TestConfigNormalize_BackfillsMissingOutputImageURLFromLegacyHugo(t *testing
 		t.Fatalf("images url = %q", conf.Output.Images.URL())
 	}
 }
+
+func TestOutputImagesConfig_TargetURLs_DefaultsWhenUnset(t *testing.T) {
+	conf := &OutputImagesConfig{}
+
+	got := conf.TargetURLs()
+
+	if len(got) != 3 {
+		t.Fatalf("target count = %d", len(got))
+	}
+	if got[0] != "https://github.com/user-attachments/" {
+		t.Fatalf("first target = %q", got[0])
+	}
+}
+
+func TestOutputImagesConfig_TargetURLs_PreservesExplicitEmptyList(t *testing.T) {
+	conf := &OutputImagesConfig{
+		Targets: []string{},
+	}
+
+	got := conf.TargetURLs()
+
+	if len(got) != 0 {
+		t.Fatalf("target count = %d", len(got))
+	}
+}

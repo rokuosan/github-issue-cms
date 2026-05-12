@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 
@@ -14,11 +15,6 @@ import (
 
 var (
 	regexURLCandidate = regexp.MustCompile(`https://[^\s<>"')\]]+`)
-	gitHubAssetHosts  = map[string]struct{}{
-		"github.com":                                {},
-		"user-images.githubusercontent.com":         {},
-		"private-user-images.githubusercontent.com": {},
-	}
 )
 
 // ArticleService converts issues into articles.
@@ -78,7 +74,7 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 	content = strings.TrimLeft(content, "\n")
 
 	time := issue.GetCreatedAt().Format("2006-01-02_150405")
-	images := extractGitHubHostedImages(content, time)
+	images := extractTargetImages(content, time, s.config.Output.Images.TargetURLs())
 
 	var tags []string
 	excludedLabels := map[string]struct{}{}
@@ -110,13 +106,13 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 	}
 }
 
-func extractGitHubHostedImages(content string, time string) []*Image {
+func extractTargetImages(content string, time string, targetURLs []string) []*Image {
 	var images []*Image
 	seen := map[string]struct{}{}
 	matches := regexURLCandidate.FindAllString(content, -1)
 	for _, match := range matches {
 		candidate := strings.TrimRight(match, ".,:;!?`")
-		if !isGitHubHostedAssetURL(candidate) {
+		if !matchesTargetURL(candidate, targetURLs) {
 			continue
 		}
 		if _, ok := seen[candidate]; ok {
@@ -128,21 +124,87 @@ func extractGitHubHostedImages(content string, time string) []*Image {
 	return images
 }
 
-func isGitHubHostedAssetURL(raw string) bool {
-	parsed, err := url.Parse(raw)
+func matchesTargetURL(raw string, targetURLs []string) bool {
+	parsedRaw, err := url.Parse(raw)
 	if err != nil {
 		return false
 	}
-	host := strings.ToLower(parsed.Host)
-	if _, ok := gitHubAssetHosts[host]; !ok {
+
+	for _, targetURL := range targetURLs {
+		if targetURL == "" {
+			continue
+		}
+		if matchTargetPattern(parsedRaw, targetURL) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchTargetPattern(parsedRaw *url.URL, targetURL string) bool {
+	parsedTarget, err := url.Parse(targetURL)
+	if err != nil {
 		return false
 	}
-	switch host {
-	case "github.com":
-		return strings.HasPrefix(parsed.Path, "/user-attachments/")
-	default:
+	if !matchesURLComponents(parsedRaw, parsedTarget) {
+		return false
+	}
+
+	if !strings.Contains(targetURL, "*") {
 		return true
 	}
+
+	if parsedTarget.Host != "" {
+		matched, err := path.Match(strings.ToLower(parsedTarget.Host), strings.ToLower(parsedRaw.Host))
+		if err != nil || !matched {
+			return false
+		}
+	}
+	if parsedTarget.Path != "" && !matchesPathPrefixPattern(parsedRaw.Path, parsedTarget.Path) {
+		return false
+	}
+
+	return true
+}
+
+func matchesURLComponents(parsedRaw *url.URL, parsedTarget *url.URL) bool {
+	if parsedTarget.Scheme != "" && !strings.EqualFold(parsedTarget.Scheme, parsedRaw.Scheme) {
+		return false
+	}
+	if parsedTarget.Host != "" && !strings.Contains(parsedTarget.Host, "*") && !strings.EqualFold(parsedTarget.Host, parsedRaw.Host) {
+		return false
+	}
+	if parsedTarget.Path != "" && !strings.Contains(parsedTarget.Path, "*") && !strings.HasPrefix(parsedRaw.Path, parsedTarget.Path) {
+		return false
+	}
+	if parsedTarget.RawQuery != "" {
+		if !strings.HasPrefix(parsedRaw.RawQuery, parsedTarget.RawQuery) {
+			return false
+		}
+	}
+	if parsedTarget.Fragment != "" && !strings.HasPrefix(parsedRaw.Fragment, parsedTarget.Fragment) {
+		return false
+	}
+
+	return true
+}
+
+func matchesPathPrefixPattern(rawPath string, targetPath string) bool {
+	if targetPath == "" {
+		return true
+	}
+	if !strings.Contains(targetPath, "*") {
+		return strings.HasPrefix(rawPath, targetPath)
+	}
+
+	for i := 1; i <= len(rawPath); i++ {
+		matched, err := path.Match(targetPath, rawPath[:i])
+		if err == nil && matched {
+			return true
+		}
+	}
+
+	return false
 }
 
 func newMetadataParser() metadataParser {
