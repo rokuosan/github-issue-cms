@@ -1,6 +1,7 @@
 package core
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -161,10 +162,14 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 			},
 		},
 		{
-			name: "Markdown画像付きIssue",
+			name: "既知のGitHubコンテンツURLだけを収集",
 			issue: &github.Issue{
-				Title:     Ptr("Image Issue"),
-				Body:      Ptr("![image](https://example.com/image1.png)\n\n![image](https://example.com/image2.png)"),
+				Title: Ptr("GitHub Asset Issue"),
+				Body: Ptr(
+					"![image](https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111)\n\n" +
+						`<img src="https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token" alt="test">` + "\n\n" +
+						"![ignored](https://example.com/image.png)",
+				),
 				CreatedAt: parseTime("2021-04-01T15:00:00Z"),
 				User:      &github.User{Login: Ptr("user")},
 				State:     Ptr("closed"),
@@ -172,20 +177,6 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 			},
 			want: map[string]interface{}{
 				"imageCount": 2,
-			},
-		},
-		{
-			name: "HTML画像付きIssue",
-			issue: &github.Issue{
-				Title:     Ptr("HTML Image Issue"),
-				Body:      Ptr(`<img width="100" alt="test" src="https://example.com/test.png">`),
-				CreatedAt: parseTime("2021-07-01T00:00:00Z"),
-				User:      &github.User{Login: Ptr("user")},
-				State:     Ptr("closed"),
-				Labels:    []*github.Label{},
-			},
-			want: map[string]interface{}{
-				"imageCount": 1,
 			},
 		},
 	}
@@ -228,6 +219,22 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExtractGitHubHostedImages_DeduplicatesURLs(t *testing.T) {
+	content := strings.Join([]string{
+		"![a](https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111)",
+		`<img src="https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111">`,
+		"https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token",
+	}, "\n")
+
+	got := extractGitHubHostedImages(content, "2021-01-01_000000")
+
+	require.Len(t, got, 2)
+	assertEqualCmp(t, "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111", got[0].URL)
+	assertEqualCmp(t, 0, got[0].ID)
+	assertEqualCmp(t, "https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token", got[1].URL)
+	assertEqualCmp(t, 1, got[1].ID)
 }
 
 func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {

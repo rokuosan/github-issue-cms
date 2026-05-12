@@ -72,6 +72,7 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 	if err != nil {
 		return err
 	}
+	replacements := make([]string, 0, len(rendered.Images)*2)
 	for _, image := range rendered.Images {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -81,7 +82,10 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 			r.logger.Error("Failed to download image", "url", image.URL, "error", err)
 			continue
 		}
-		rendered.Content = strings.ReplaceAll(rendered.Content, image.URL, joinURLPath(imageURLBase, filename))
+		replacements = append(replacements, image.URL, joinURLPath(imageURLBase, filename))
+	}
+	if len(replacements) > 0 {
+		rendered.Content = strings.NewReplacer(replacements...).Replace(rendered.Content)
 	}
 
 	text, err := r.renderer.Render(rendered)

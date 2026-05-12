@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -12,8 +13,11 @@ import (
 )
 
 var (
-	regexMarkdownImage = regexp.MustCompile(`!\[[^\]]*]\((.+?)\)`)
-	regexHTMLImage     = regexp.MustCompile(`<img width="\d+" alt="(\w+)" src="(\S+)">`)
+	regexURLCandidate = regexp.MustCompile(`https://[^\s<>"')\]]+`)
+	gitHubAssetHosts  = map[string]struct{}{
+		"github.com":                              {},
+		"private-user-images.githubusercontent.com": {},
+	}
 )
 
 // ArticleService converts issues into articles.
@@ -73,10 +77,7 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 	content = strings.TrimLeft(content, "\n")
 
 	time := issue.GetCreatedAt().Format("2006-01-02_150405")
-
-	var images []*Image
-	images = append(images, s.findImages(content, regexMarkdownImage, time, 0)...)
-	images = append(images, s.findImages(content, regexHTMLImage, time, len(images))...)
+	images := extractGitHubHostedImages(content, time)
 
 	var tags []string
 	excludedLabels := map[string]struct{}{}
@@ -108,20 +109,39 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 	}
 }
 
-func (s *ArticleService) findImages(content string, re *regexp.Regexp, time string, offset int) []*Image {
+func extractGitHubHostedImages(content string, time string) []*Image {
 	var images []*Image
-
-	matches := re.FindAllStringSubmatch(content, -1)
-	for i, m := range matches {
-		id := i + offset
-		url := m[1]
-		if len(m) > 2 {
-			url = m[2]
+	seen := map[string]struct{}{}
+	matches := regexURLCandidate.FindAllString(content, -1)
+	for _, match := range matches {
+		candidate := strings.TrimRight(match, ".,:;!?")
+		if !isGitHubHostedAssetURL(candidate) {
+			continue
 		}
-		images = append(images, NewImage(url, time, id))
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		images = append(images, NewImage(candidate, time, len(images)))
 	}
-
 	return images
+}
+
+func isGitHubHostedAssetURL(raw string) bool {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	host := strings.ToLower(parsed.Host)
+	if _, ok := gitHubAssetHosts[host]; !ok {
+		return false
+	}
+	switch host {
+	case "github.com":
+		return strings.HasPrefix(parsed.Path, "/user-attachments/")
+	default:
+		return true
+	}
 }
 
 func newMetadataParser() metadataParser {

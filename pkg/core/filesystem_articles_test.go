@@ -72,6 +72,84 @@ func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
 	assertEqualCmp(t, "jpeg", string(imageData))
 }
 
+func TestFileSystemArticleRepository_Save_RewritesHTMLImageURLs(t *testing.T) {
+	tempDir := t.TempDir()
+
+	conf := *config.NewConfig()
+	conf.Output.Articles.Directory = filepath.Join(tempDir, "content", "%Y-%m-%d")
+	conf.Output.Images.Directory = filepath.Join(tempDir, "static", "images", "%Y-%m-%d")
+	conf.Output.Images.BaseURL = Ptr("/images/%Y-%m-%d")
+	conf.Output.Articles.Filename = "index.md"
+	conf.Output.Images.Filename = "[:id].png"
+
+	imageURL := "https://example.com/test.png"
+	repo := &FileSystemArticleRepository{
+		imageRepo: &fakeImageRepository{contentType: "image/png", body: "png"},
+		renderer:  NewHugoArticleRenderer(),
+		logger:    slog.Default(),
+	}
+
+	article := &Article{
+		Author:  "Author",
+		Title:   "Title",
+		Content: `<img class="rounded" src="` + imageURL + `" alt="test image" loading="lazy">`,
+		Date:    "2021-01-01T00:00:00Z",
+		Images: []*Image{
+			NewImage(imageURL, "2021-01-01_000000", 0),
+		},
+	}
+
+	err := repo.Save(context.Background(), article, conf)
+	require.NoError(t, err)
+
+	outputPath := filepath.Join(tempDir, "content", "2021-01-01", "index.md")
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `<img class="rounded" src="/images/2021-01-01/0.png" alt="test image" loading="lazy">`)
+}
+
+func TestFileSystemArticleRepository_Save_RewritesGitHubHostedImageURLsInOnePass(t *testing.T) {
+	tempDir := t.TempDir()
+
+	conf := *config.NewConfig()
+	conf.Output.Articles.Directory = filepath.Join(tempDir, "content", "%Y-%m-%d")
+	conf.Output.Images.Directory = filepath.Join(tempDir, "static", "images", "%Y-%m-%d")
+	conf.Output.Images.BaseURL = Ptr("/images/%Y-%m-%d")
+	conf.Output.Articles.Filename = "index.md"
+	conf.Output.Images.Filename = "[:id].png"
+
+	firstURL := "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111"
+	secondURL := "https://github.com/user-attachments/assets/22222222-2222-2222-2222-222222222222"
+	repo := &FileSystemArticleRepository{
+		imageRepo: &fakeImageRepository{contentType: "image/png", body: "png"},
+		renderer:  NewHugoArticleRenderer(),
+		logger:    slog.Default(),
+	}
+
+	article := &Article{
+		Author: "Author",
+		Title:  "Title",
+		Content: "![first](" + firstURL + ")\n\n" +
+			`<img src="` + secondURL + `" alt="second">`,
+		Date: "2021-01-01T00:00:00Z",
+		Images: []*Image{
+			NewImage(firstURL, "2021-01-01_000000", 0),
+			NewImage(secondURL, "2021-01-01_000000", 1),
+		},
+	}
+
+	err := repo.Save(context.Background(), article, conf)
+	require.NoError(t, err)
+
+	outputPath := filepath.Join(tempDir, "content", "2021-01-01", "index.md")
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "![first](/images/2021-01-01/0.png)")
+	assert.Contains(t, string(data), `<img src="/images/2021-01-01/1.png" alt="second">`)
+	assert.NotContains(t, string(data), firstURL)
+	assert.NotContains(t, string(data), secondURL)
+}
+
 func TestFileSystemArticleRepository_Save_UsesFrontMatterDateForOutputPaths(t *testing.T) {
 	tempDir := t.TempDir()
 
