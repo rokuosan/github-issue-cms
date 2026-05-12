@@ -29,7 +29,7 @@ type OutputImagesConfig struct {
 	Directory string   `yaml:"directory" mapstructure:"directory"`
 	Filename  string   `yaml:"filename" mapstructure:"filename"`
 	BaseURL   *string  `yaml:"url" mapstructure:"url"`
-	Targets   []string `yaml:"targets,omitempty" mapstructure:"targets"`
+	Targets   []string `yaml:"targets" mapstructure:"targets"`
 }
 
 var defaultImageTargets = []string{

@@ -143,7 +143,7 @@ func matchesTargetURL(raw string, targetURLs []string) bool {
 
 func matchTargetPattern(raw string, parsedRaw *url.URL, targetURL string) bool {
 	if !strings.Contains(targetURL, "*") {
-		return strings.HasPrefix(raw, targetURL)
+		return matchesURLPrefix(parsedRaw, targetURL)
 	}
 
 	parsedTarget, err := url.Parse(targetURL)
@@ -160,6 +160,33 @@ func matchTargetPattern(raw string, parsedRaw *url.URL, targetURL string) bool {
 		}
 	}
 	if !matchesPathPrefixPattern(parsedRaw.Path, parsedTarget.Path) {
+		return false
+	}
+
+	return true
+}
+
+func matchesURLPrefix(parsedRaw *url.URL, targetURL string) bool {
+	parsedTarget, err := url.Parse(targetURL)
+	if err != nil {
+		return false
+	}
+	if parsedTarget.Scheme != "" && !strings.EqualFold(parsedTarget.Scheme, parsedRaw.Scheme) {
+		return false
+	}
+	if parsedTarget.Host != "" && !strings.EqualFold(parsedTarget.Host, parsedRaw.Host) {
+		return false
+	}
+	if parsedTarget.Path != "" && !strings.HasPrefix(parsedRaw.Path, parsedTarget.Path) {
+		return false
+	}
+	if parsedTarget.RawQuery != "" {
+		rawQueryPrefix := parsedRaw.RawQuery
+		if !strings.HasPrefix(rawQueryPrefix, parsedTarget.RawQuery) {
+			return false
+		}
+	}
+	if parsedTarget.Fragment != "" && !strings.HasPrefix(parsedRaw.Fragment, parsedTarget.Fragment) {
 		return false
 	}
 

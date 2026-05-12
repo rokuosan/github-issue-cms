@@ -284,6 +284,18 @@ func TestExtractTargetImages_UsesConfiguredPrefixes(t *testing.T) {
 	assertEqualCmp(t, "https://cdn.example.com/assets/beta.png", got[1].URL)
 }
 
+func TestExtractTargetImages_MatchesNonWildcardHostsCaseInsensitively(t *testing.T) {
+	got := extractTargetImages(strings.Join([]string{
+		"https://GitHub.com/user-attachments/assets/alpha.png",
+		"https://github.com/other/ignored.png",
+	}, "\n"), "2021-01-01_000000", []string{
+		"https://github.com/user-attachments/",
+	})
+
+	require.Len(t, got, 1)
+	assertEqualCmp(t, "https://GitHub.com/user-attachments/assets/alpha.png", got[0].URL)
+}
+
 func TestExtractTargetImages_UsesWildcardHostPatterns(t *testing.T) {
 	got := extractTargetImages(strings.Join([]string{
 		"https://user-images.githubusercontent.com/123/a.png",
