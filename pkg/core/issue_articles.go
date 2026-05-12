@@ -134,55 +134,51 @@ func matchesTargetURL(raw string, targetURLs []string) bool {
 		if targetURL == "" {
 			continue
 		}
-		if matchTargetPattern(raw, parsedRaw, targetURL) {
+		if matchTargetPattern(parsedRaw, targetURL) {
 			return true
 		}
 	}
 	return false
 }
 
-func matchTargetPattern(raw string, parsedRaw *url.URL, targetURL string) bool {
-	if !strings.Contains(targetURL, "*") {
-		return matchesURLPrefix(parsedRaw, targetURL)
-	}
-
+func matchTargetPattern(parsedRaw *url.URL, targetURL string) bool {
 	parsedTarget, err := url.Parse(targetURL)
 	if err != nil {
 		return false
 	}
-	if parsedTarget.Scheme != "" && !strings.EqualFold(parsedTarget.Scheme, parsedRaw.Scheme) {
+	if !matchesURLComponents(parsedRaw, parsedTarget) {
 		return false
 	}
+
+	if !strings.Contains(targetURL, "*") {
+		return true
+	}
+
 	if parsedTarget.Host != "" {
 		matched, err := path.Match(strings.ToLower(parsedTarget.Host), strings.ToLower(parsedRaw.Host))
 		if err != nil || !matched {
 			return false
 		}
 	}
-	if !matchesPathPrefixPattern(parsedRaw.Path, parsedTarget.Path) {
+	if parsedTarget.Path != "" && !matchesPathPrefixPattern(parsedRaw.Path, parsedTarget.Path) {
 		return false
 	}
 
 	return true
 }
 
-func matchesURLPrefix(parsedRaw *url.URL, targetURL string) bool {
-	parsedTarget, err := url.Parse(targetURL)
-	if err != nil {
-		return false
-	}
+func matchesURLComponents(parsedRaw *url.URL, parsedTarget *url.URL) bool {
 	if parsedTarget.Scheme != "" && !strings.EqualFold(parsedTarget.Scheme, parsedRaw.Scheme) {
 		return false
 	}
-	if parsedTarget.Host != "" && !strings.EqualFold(parsedTarget.Host, parsedRaw.Host) {
+	if parsedTarget.Host != "" && !strings.Contains(parsedTarget.Host, "*") && !strings.EqualFold(parsedTarget.Host, parsedRaw.Host) {
 		return false
 	}
-	if parsedTarget.Path != "" && !strings.HasPrefix(parsedRaw.Path, parsedTarget.Path) {
+	if parsedTarget.Path != "" && !strings.Contains(parsedTarget.Path, "*") && !strings.HasPrefix(parsedRaw.Path, parsedTarget.Path) {
 		return false
 	}
 	if parsedTarget.RawQuery != "" {
-		rawQueryPrefix := parsedRaw.RawQuery
-		if !strings.HasPrefix(rawQueryPrefix, parsedTarget.RawQuery) {
+		if !strings.HasPrefix(parsedRaw.RawQuery, parsedTarget.RawQuery) {
 			return false
 		}
 	}
