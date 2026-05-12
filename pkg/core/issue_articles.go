@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v86/github"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"gopkg.in/yaml.v3"
