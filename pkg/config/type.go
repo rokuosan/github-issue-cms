@@ -26,9 +26,16 @@ type OutputArticlesConfig struct {
 }
 
 type OutputImagesConfig struct {
-	Directory string  `yaml:"directory" mapstructure:"directory"`
-	Filename  string  `yaml:"filename" mapstructure:"filename"`
-	BaseURL   *string `yaml:"url" mapstructure:"url"`
+	Directory string   `yaml:"directory" mapstructure:"directory"`
+	Filename  string   `yaml:"filename" mapstructure:"filename"`
+	BaseURL   *string  `yaml:"url" mapstructure:"url"`
+	Targets   []string `yaml:"targets,omitempty" mapstructure:"targets"`
+}
+
+var defaultImageTargets = []string{
+	"https://github.com/user-attachments/",
+	"https://user-images.githubusercontent.com/",
+	"https://private-user-images.githubusercontent.com/",
 }
 
 type HugoConfig struct {
@@ -113,6 +120,13 @@ func (c *OutputImagesConfig) URL() string {
 		return ""
 	}
 	return *c.BaseURL
+}
+
+func (c *OutputImagesConfig) TargetURLs() []string {
+	if c == nil || c.Targets == nil {
+		return defaultImageTargets
+	}
+	return c.Targets
 }
 
 func (c *Config) normalize() {

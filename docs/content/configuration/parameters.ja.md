@@ -51,6 +51,11 @@ GitHub の設定です。
 - `directory`: 画像の保存先ディレクトリ
 - `filename`: 画像のファイル名
 - `url`: Markdownから参照される画像のURL
+- `targets`: Issue本文内で検出して置換するURLプレフィックス
+
+`targets` を省略した場合は、組み込みの GitHub 添付画像URL ルールが使われます。
+`targets: []` を指定した場合は、画像URLの検出も置換も行いません。
+`https://*.githubusercontent.com` のようなワイルドカード付きホスト指定も使えます。
 
 ``[:id]`` は画像の ID に置き換わります。画像の ID はそのIssue内部で一意で、連番で割り振られます。
 
