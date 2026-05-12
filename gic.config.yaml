@@ -1,15 +1,18 @@
 github:
-  username: 'rokuosan'
-  repository: 'github-issue-cms'
+  username: "rokuosan"
+  repository: "github-issue-cms"
 
 output:
   articles:
-    directory: 'content/posts'
-    filename: '%Y-%m-%d_%H%M%S.md'
+    directory: "content/posts"
+    filename: "%Y-%m-%d_%H%M%S.md"
   images:
-    directory: 'static/images/%Y-%m-%d_%H%M%S'
-    filename: '[:id].png'
-    url: '/images/%Y-%m-%d_%H%M%S'
+    directory: "static/images/%Y-%m-%d_%H%M%S"
+    filename: "[:id].png"
+    url: "/images/%Y-%m-%d_%H%M%S"
+    targets:
+      - "https://github.com/user-attachments/"
+      - "https://*.githubusercontent.com"
 
 # For page bundle
 # output:
