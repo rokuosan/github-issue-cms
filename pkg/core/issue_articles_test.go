@@ -298,6 +298,33 @@ func TestExtractTargetImages_UsesWildcardHostPatterns(t *testing.T) {
 	assertEqualCmp(t, "https://private-user-images.githubusercontent.com/456/b.png?jwt=token", got[1].URL)
 }
 
+func TestExtractTargetImages_PreservesPrefixMatchingForWildcardTargetPaths(t *testing.T) {
+	t.Run("matches any path below wildcard host root", func(t *testing.T) {
+		got := extractTargetImages(strings.Join([]string{
+			"https://private-user-images.githubusercontent.com/01234/4578.png",
+			"https://private-user-images.githubusercontent.com/assets/4578/image.png",
+		}, "\n"), "2021-01-01_000000", []string{
+			"https://*.githubusercontent.com/",
+		})
+
+		require.Len(t, got, 2)
+		assertEqualCmp(t, "https://private-user-images.githubusercontent.com/01234/4578.png", got[0].URL)
+		assertEqualCmp(t, "https://private-user-images.githubusercontent.com/assets/4578/image.png", got[1].URL)
+	})
+
+	t.Run("matches only paths under the wildcard host prefix", func(t *testing.T) {
+		got := extractTargetImages(strings.Join([]string{
+			"https://private-user-images.githubusercontent.com/assets/4578/image.png",
+			"https://private-user-images.githubusercontent.com/static/image.png",
+		}, "\n"), "2021-01-01_000000", []string{
+			"https://*.githubusercontent.com/assets/",
+		})
+
+		require.Len(t, got, 1)
+		assertEqualCmp(t, "https://private-user-images.githubusercontent.com/assets/4578/image.png", got[0].URL)
+	})
+}
+
 func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
 	service := NewArticleService(*config.NewConfig())
 

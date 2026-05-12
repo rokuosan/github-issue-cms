@@ -159,14 +159,29 @@ func matchTargetPattern(raw string, parsedRaw *url.URL, targetURL string) bool {
 			return false
 		}
 	}
-	if parsedTarget.Path != "" {
-		matched, err := path.Match(parsedTarget.Path, parsedRaw.Path)
-		if err != nil || !matched {
-			return false
-		}
+	if !matchesPathPrefixPattern(parsedRaw.Path, parsedTarget.Path) {
+		return false
 	}
 
 	return true
+}
+
+func matchesPathPrefixPattern(rawPath string, targetPath string) bool {
+	if targetPath == "" {
+		return true
+	}
+	if !strings.Contains(targetPath, "*") {
+		return strings.HasPrefix(rawPath, targetPath)
+	}
+
+	for i := 1; i <= len(rawPath); i++ {
+		matched, err := path.Match(targetPath, rawPath[:i])
+		if err == nil && matched {
+			return true
+		}
+	}
+
+	return false
 }
 
 func newMetadataParser() metadataParser {
