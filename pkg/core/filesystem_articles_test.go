@@ -29,15 +29,15 @@ func (r *fakeImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 
 func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
 	tests := []struct {
-		name                string
-		contentType         string
-		body                string
-		content             string
-		images              []*Image
-		wantContains        []string
-		wantNotContains     []string
-		wantSavedFilename   string
-		wantSavedFileBody   string
+		name              string
+		contentType       string
+		body              string
+		content           string
+		images            []*Image
+		wantContains      []string
+		wantNotContains   []string
+		wantSavedFilename string
+		wantSavedFileBody string
 	}{
 		{
 			name:              "rewrites markdown image URLs",

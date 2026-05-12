@@ -15,8 +15,8 @@ import (
 var (
 	regexURLCandidate = regexp.MustCompile(`https://[^\s<>"')\]]+`)
 	gitHubAssetHosts  = map[string]struct{}{
-		"github.com":                              {},
-		"user-images.githubusercontent.com":       {},
+		"github.com":                                {},
+		"user-images.githubusercontent.com":         {},
 		"private-user-images.githubusercontent.com": {},
 	}
 )
