@@ -241,6 +241,19 @@ func TestExtractGitHubHostedImages_DeduplicatesURLs(t *testing.T) {
 	assertEqualCmp(t, 2, got[2].ID)
 }
 
+func TestExtractGitHubHostedImages_TrimsTrailingBackticks(t *testing.T) {
+	content := strings.Join([]string{
+		"`https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111`",
+		"`https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token`,",
+	}, "\n")
+
+	got := extractGitHubHostedImages(content, "2021-01-01_000000")
+
+	require.Len(t, got, 2)
+	assertEqualCmp(t, "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111", got[0].URL)
+	assertEqualCmp(t, "https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token", got[1].URL)
+}
+
 func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
 	service := NewArticleService(*config.NewConfig())
 

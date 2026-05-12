@@ -115,7 +115,7 @@ func extractGitHubHostedImages(content string, time string) []*Image {
 	seen := map[string]struct{}{}
 	matches := regexURLCandidate.FindAllString(content, -1)
 	for _, match := range matches {
-		candidate := strings.TrimRight(match, ".,:;!?")
+		candidate := strings.TrimRight(match, ".,:;!?`")
 		if !isGitHubHostedAssetURL(candidate) {
 			continue
 		}
