@@ -168,6 +168,7 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 				Body: Ptr(
 					"![image](https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111)\n\n" +
 						`<img src="https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token" alt="test">` + "\n\n" +
+						"[legacy](https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png)\n\n" +
 						"![ignored](https://example.com/image.png)",
 				),
 				CreatedAt: parseTime("2021-04-01T15:00:00Z"),
@@ -176,7 +177,7 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 				Labels:    []*github.Label{},
 			},
 			want: map[string]interface{}{
-				"imageCount": 2,
+				"imageCount": 3,
 			},
 		},
 	}
@@ -226,15 +227,18 @@ func TestExtractGitHubHostedImages_DeduplicatesURLs(t *testing.T) {
 		"![a](https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111)",
 		`<img src="https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111">`,
 		"https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token",
+		"https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png",
 	}, "\n")
 
 	got := extractGitHubHostedImages(content, "2021-01-01_000000")
 
-	require.Len(t, got, 2)
+	require.Len(t, got, 3)
 	assertEqualCmp(t, "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111", got[0].URL)
 	assertEqualCmp(t, 0, got[0].ID)
 	assertEqualCmp(t, "https://private-user-images.githubusercontent.com/22222222/33333333-4444-5555-6666-777777777777.png?jwt=token", got[1].URL)
 	assertEqualCmp(t, 1, got[1].ID)
+	assertEqualCmp(t, "https://user-images.githubusercontent.com/1234567/abcdef01-2345-6789-abcd-ef0123456789.png", got[2].URL)
+	assertEqualCmp(t, 2, got[2].ID)
 }
 
 func TestArticleService_ConvertIssueToArticle_PullRequest(t *testing.T) {
