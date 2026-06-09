@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags="-s -w -X github.com/rokuosan/github-issue-cms/cmd/cli.Version=${VERSION}" -o /out/github-issue-cms .
 
-FROM alpine:3.23
+FROM alpine:3.24
 
 RUN adduser -D -u 10001 app && apk add --no-cache ca-certificates \
     && mkdir -p /work \
