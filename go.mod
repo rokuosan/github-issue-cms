@@ -7,6 +7,7 @@ toolchain go1.26.4
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v86 v86.0.0
+	github.com/google/go-github/v88 v88.0.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
