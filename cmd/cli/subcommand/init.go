@@ -3,6 +3,7 @@ package subcommand
 import (
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/spf13/cobra"
@@ -14,6 +15,7 @@ func NewInitCommand() *cobra.Command {
 	var (
 		username   string
 		repository string
+		force      bool
 	)
 
 	cmd := &cobra.Command{
@@ -34,18 +36,28 @@ Examples:
   # Short form
   github-issue-cms init -u yourname -r yourrepo`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInit(cmd, username, repository)
+			return runInit(cmd, username, repository, force)
 		},
 	}
 
 	// Define flags.
 	cmd.Flags().StringVarP(&username, "username", "u", "", "GitHub username")
 	cmd.Flags().StringVarP(&repository, "repository", "r", "", "GitHub repository name")
+	cmd.Flags().BoolVar(&force, "force", false, "Overwrite an existing configuration file")
 
 	return cmd
 }
 
-func runInit(cmd *cobra.Command, username, repository string) error {
+func runInit(cmd *cobra.Command, username, repository string, force bool) error {
+	configPath := config.GetConfigPath()
+	if !force {
+		if _, err := os.Stat(configPath); err == nil {
+			return fmt.Errorf("configuration file already exists: %s (use --force to overwrite)", configPath)
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to inspect configuration file %s: %w", configPath, err)
+		}
+	}
+
 	slog.Info("Generating configuration file...")
 
 	// Generate the config file.
@@ -74,7 +86,6 @@ func runInit(cmd *cobra.Command, username, repository string) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	configPath := config.GetConfigPath()
 	slog.Info("Configuration file created: " + configPath)
 
 	// Show the resulting configuration values.
