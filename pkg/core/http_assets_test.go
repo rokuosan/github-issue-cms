@@ -1,8 +1,10 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -124,6 +126,24 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 		defer asset.Body.Close()
 		assertEqualCmp(t, "token test-token", authHeader)
 	})
+}
+
+func TestHTTPImageRepository_Fetch_ReportsAuthenticatedAndFallbackFailures(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	repo := NewHTTPImageRepositoryWithLogger("test-token", logger)
+	_, err := repo.Fetch(context.Background(), NewImage(server.URL, "2021-01-01_000000", 0))
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "authenticated request failed")
+	assert.Contains(t, err.Error(), "unauthenticated fallback failed")
+	assert.Contains(t, logs.String(), "authenticated image download failed; retrying without token")
+	assert.NotContains(t, logs.String(), "test-token")
 }
 
 func TestHTTPImageRepository_Download_InvalidURL(t *testing.T) {
