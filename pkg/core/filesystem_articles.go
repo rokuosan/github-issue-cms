@@ -157,7 +157,7 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	}
 
 	fullPath := filepath.Join(imageDir, filename)
-	tempFile, err := createImageTempFile(imageDir, filename)
+	tempFile, err := createImageTempFile(imageDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary image file in %s: %w", imageDir, err)
 	}
@@ -178,7 +178,7 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	return filename, nil
 }
 
-func createImageTempFile(directory, filename string) (*os.File, error) {
+func createImageTempFile(directory string) (*os.File, error) {
 	const maxAttempts = 100
 
 	for range maxAttempts {
@@ -187,7 +187,7 @@ func createImageTempFile(directory, filename string) (*os.File, error) {
 			return nil, fmt.Errorf("generate random suffix: %w", err)
 		}
 
-		path := filepath.Join(directory, "."+filename+"-"+hex.EncodeToString(randomBytes[:]))
+		path := filepath.Join(directory, ".gic-image-"+hex.EncodeToString(randomBytes[:]))
 		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o666)
 		if err == nil {
 			return file, nil
