@@ -61,8 +61,15 @@ func TestFileSystemArticleRepository_SaveImage_RemovesPartialFileOnFailure(t *te
 	assert.True(t, os.IsNotExist(statErr))
 }
 
-func TestFileSystemArticleRepository_SaveImage_UsesReadableFilePermissions(t *testing.T) {
+func TestFileSystemArticleRepository_SaveImage_RespectsProcessUmask(t *testing.T) {
 	tempDir := t.TempDir()
+	referencePath := filepath.Join(tempDir, "reference")
+	reference, err := os.OpenFile(referencePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o666)
+	require.NoError(t, err)
+	require.NoError(t, reference.Close())
+	referenceInfo, err := os.Stat(referencePath)
+	require.NoError(t, err)
+
 	conf := *config.NewConfig()
 	conf.Output.Images.Filename = "[:id].png"
 	repo := &FileSystemArticleRepository{imageRepo: &fakeImageRepository{contentType: "image/png", body: "png"}}
@@ -71,7 +78,7 @@ func TestFileSystemArticleRepository_SaveImage_UsesReadableFilePermissions(t *te
 	require.NoError(t, err)
 	info, err := os.Stat(filepath.Join(tempDir, filename))
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
+	assert.Equal(t, referenceInfo.Mode().Perm(), info.Mode().Perm())
 }
 
 func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
