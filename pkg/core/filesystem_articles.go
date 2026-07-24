@@ -155,14 +155,22 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	}
 
 	fullPath := filepath.Join(imageDir, filename)
-	file, err := os.Create(fullPath)
+	tempFile, err := os.CreateTemp(imageDir, "."+filename+"-*")
 	if err != nil {
-		return "", fmt.Errorf("failed to create file %s: %w", fullPath, err)
+		return "", fmt.Errorf("failed to create temporary image file in %s: %w", imageDir, err)
 	}
-	defer file.Close()
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
 
-	if _, err := io.Copy(file, asset.Body); err != nil {
+	if _, err := io.Copy(tempFile, asset.Body); err != nil {
+		_ = tempFile.Close()
 		return "", fmt.Errorf("failed to write image to %s: %w", fullPath, err)
+	}
+	if err := tempFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close image file %s: %w", fullPath, err)
+	}
+	if err := os.Rename(tempPath, fullPath); err != nil {
+		return "", fmt.Errorf("failed to finalize image file %s: %w", fullPath, err)
 	}
 
 	return filename, nil

@@ -27,6 +27,40 @@ func (r *fakeImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 	}, nil
 }
 
+type failingImageRepository struct{}
+
+func (failingImageRepository) Fetch(context.Context, *Image) (*ImageAsset, error) {
+	return &ImageAsset{
+		Body:        io.NopCloser(&failingReader{}),
+		ContentType: "image/png",
+	}, nil
+}
+
+type failingReader struct {
+	read bool
+}
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.read {
+		return 0, assert.AnError
+	}
+	r.read = true
+	copy(p, "partial")
+	return len("partial"), nil
+}
+
+func TestFileSystemArticleRepository_SaveImage_RemovesPartialFileOnFailure(t *testing.T) {
+	tempDir := t.TempDir()
+	conf := *config.NewConfig()
+	conf.Output.Images.Filename = "[:id].png"
+	repo := &FileSystemArticleRepository{imageRepo: failingImageRepository{}}
+
+	_, err := repo.saveImage(context.Background(), NewImage("https://example.com/image.png", "", 0), tempDir, conf, time.Now())
+	require.Error(t, err)
+	_, statErr := os.Stat(filepath.Join(tempDir, "0.png"))
+	assert.True(t, os.IsNotExist(statErr))
+}
+
 func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
 	tests := []struct {
 		name              string
