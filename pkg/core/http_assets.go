@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -49,14 +50,25 @@ func (r *HTTPImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 
 // downloadImage downloads an image over HTTP.
 func (r *HTTPImageRepository) downloadImage(ctx context.Context, url string) (io.ReadCloser, string, error) {
-	// Try an authenticated request first.
+	// Try an authenticated request first so private attachments can be fetched.
 	if r.token != "" {
 		if body, contentType, err := r.sendRequest(ctx, url, true); err == nil {
 			return body, contentType, nil
+		} else {
+			r.logger.Warn("authenticated image download failed; retrying without token", "url", url, "error", err)
+
+			body, contentType, fallbackErr := r.sendRequest(ctx, url, false)
+			if fallbackErr == nil {
+				return body, contentType, nil
+			}
+			return nil, "", errors.Join(
+				fmt.Errorf("authenticated request failed: %w", err),
+				fmt.Errorf("unauthenticated fallback failed: %w", fallbackErr),
+			)
 		}
 	}
 
-	// Fall back to an unauthenticated request.
+	// No token was configured, so only an unauthenticated request is possible.
 	return r.sendRequest(ctx, url, false)
 }
 
