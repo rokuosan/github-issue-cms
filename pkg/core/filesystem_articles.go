@@ -166,6 +166,9 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 		_ = tempFile.Close()
 		return "", fmt.Errorf("failed to write image to %s: %w", fullPath, err)
 	}
+	if err := tempFile.Chmod(0o644); err != nil {
+		return "", fmt.Errorf("failed to set image file permissions for %s: %w", fullPath, err)
+	}
 	if err := tempFile.Close(); err != nil {
 		return "", fmt.Errorf("failed to close image file %s: %w", fullPath, err)
 	}
