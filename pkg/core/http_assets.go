@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -16,22 +17,39 @@ const defaultHTTPTimeout = 30
 
 // HTTPImageRepository downloads images over HTTP.
 type HTTPImageRepository struct {
-	token  string
-	logger *slog.Logger
-	client *http.Client
+	token        string
+	trustedHosts map[string]struct{}
+	logger       *slog.Logger
+	client       *http.Client
 }
 
-// NewHTTPImageRepository creates a new HTTPImageRepository.
+// NewHTTPImageRepository creates a new HTTPImageRepository without trusted hosts.
 func NewHTTPImageRepository(token string) AssetFetcher {
-	return NewHTTPImageRepositoryWithLogger(token, nil)
+	return NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, nil, nil)
 }
 
-// NewHTTPImageRepositoryWithLogger creates a new HTTPImageRepository with an injected logger.
+// NewHTTPImageRepositoryWithTrustedHosts creates a new HTTPImageRepository that only sends a token to trusted HTTPS hosts.
+func NewHTTPImageRepositoryWithTrustedHosts(token string, trustedHosts []string) *HTTPImageRepository {
+	return NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, trustedHosts, nil)
+}
+
+// NewHTTPImageRepositoryWithLogger creates a new HTTPImageRepository with an injected logger and no trusted hosts.
 func NewHTTPImageRepositoryWithLogger(token string, logger *slog.Logger) AssetFetcher {
+	return NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, nil, logger)
+}
+
+// NewHTTPImageRepositoryWithTrustedHostsAndLogger creates a new HTTPImageRepository with trusted hosts and an injected logger.
+func NewHTTPImageRepositoryWithTrustedHostsAndLogger(token string, trustedHosts []string, logger *slog.Logger) *HTTPImageRepository {
+	hosts := make(map[string]struct{}, len(trustedHosts))
+	for _, host := range trustedHosts {
+		hosts[strings.ToLower(host)] = struct{}{}
+	}
+
 	return &HTTPImageRepository{
-		token:  token,
-		logger: defaultLogger(logger),
-		client: &http.Client{Timeout: defaultHTTPTimeout * time.Second},
+		token:        token,
+		trustedHosts: hosts,
+		logger:       defaultLogger(logger),
+		client:       &http.Client{Timeout: defaultHTTPTimeout * time.Second},
 	}
 }
 
@@ -50,8 +68,8 @@ func (r *HTTPImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 
 // downloadImage downloads an image over HTTP.
 func (r *HTTPImageRepository) downloadImage(ctx context.Context, url string) (io.ReadCloser, string, error) {
-	// Try an authenticated request first so private attachments can be fetched.
-	if r.token != "" {
+	// A token is only sent to explicitly trusted HTTPS hosts.
+	if r.token != "" && r.isTrustedURL(url) {
 		if body, contentType, err := r.sendRequest(ctx, url, true); err == nil {
 			return body, contentType, nil
 		} else {
@@ -83,7 +101,22 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 		req.Header.Set("Authorization", "token "+r.token)
 	}
 
-	resp, err := r.client.Do(req)
+	client := *r.client
+	if includeToken && r.token != "" {
+		previousCheckRedirect := client.CheckRedirect
+		client.CheckRedirect = func(redirectReq *http.Request, via []*http.Request) error {
+			redirectReq.Header.Del("Authorization")
+			if r.isTrustedURL(redirectReq.URL.String()) {
+				redirectReq.Header.Set("Authorization", "token "+r.token)
+			}
+			if previousCheckRedirect != nil {
+				return previousCheckRedirect(redirectReq, via)
+			}
+			return nil
+		}
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
@@ -96,6 +129,15 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 	}
 
 	return resp.Body, contentType, nil
+}
+
+func (r *HTTPImageRepository) isTrustedURL(rawURL string) bool {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil || !strings.EqualFold(parsedURL.Scheme, "https") {
+		return false
+	}
+	_, trusted := r.trustedHosts[strings.ToLower(parsedURL.Host)]
+	return trusted
 }
 
 func normalizeContentType(value string) string {

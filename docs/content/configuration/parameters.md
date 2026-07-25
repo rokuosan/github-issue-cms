@@ -25,6 +25,10 @@ output:
     directory: 'static/images/%Y-%m-%d_%H%M%S'
     filename: '[:id].png'
     url: '/images/%Y-%m-%d_%H%M%S'
+    trusted_hosts:
+      - 'github.com'
+      - 'user-images.githubusercontent.com'
+      - 'private-user-images.githubusercontent.com'
 ```
 
 ## Configuration Items
@@ -52,10 +56,13 @@ Output settings.
 - `filename`: Image filename
 - `url`: Image URL referenced from Markdown
 - `targets`: URL prefixes to detect and replace in issue bodies
+- `trusted_hosts`: Exact HTTPS hosts that may receive the GitHub token when images are downloaded
 
 If `targets` is omitted, the built-in GitHub attachment URL rules are used.
 If `targets: []` is specified, no image URLs are detected or replaced.
 Wildcard host patterns such as `https://*.githubusercontent.com` are also supported.
+
+`trusted_hosts` is an independent security boundary: adding a URL to `targets` does **not** grant it access to the token. Hosts match exactly (including an explicit port), and tokens are sent only over HTTPS. On redirects, the token is removed unless the redirect destination is also listed. If omitted, the default GitHub attachment hosts (`github.com`, `user-images.githubusercontent.com`, and `private-user-images.githubusercontent.com`) are trusted for backward compatibility. Set `trusted_hosts: []` to download every image without a token.
 
 `[:id]` will be replaced with the image ID. The image ID is unique within each issue and assigned sequentially.
 

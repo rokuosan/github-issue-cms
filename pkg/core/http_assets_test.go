@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,7 +107,7 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 
 	t.Run("request with token", func(t *testing.T) {
 		var authHeader string
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader = r.Header.Get("Authorization")
 			w.Header().Set("Content-Type", "image/png")
 			w.WriteHeader(http.StatusOK)
@@ -114,7 +115,10 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 		}))
 		defer server.Close()
 
-		repo := NewHTTPImageRepository("test-token")
+		serverURL, err := url.Parse(server.URL)
+		assert.NoError(t, err)
+		repo := NewHTTPImageRepositoryWithTrustedHosts("test-token", []string{serverURL.Host})
+		repo.client = server.Client()
 		image := &Image{
 			URL:  server.URL,
 			Time: "2021-01-01_000000",
@@ -126,18 +130,99 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 		defer asset.Body.Close()
 		assertEqualCmp(t, "token test-token", authHeader)
 	})
+
+	t.Run("does not send a token to an untrusted host", func(t *testing.T) {
+		var authHeader string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("PNG"))
+		}))
+		defer server.Close()
+
+		repo := NewHTTPImageRepositoryWithTrustedHosts("test-token", nil)
+		asset, err := repo.Fetch(context.Background(), NewImage(server.URL, "2021-01-01_000000", 0))
+		assert.NoError(t, err)
+		defer asset.Body.Close()
+		assert.Empty(t, authHeader)
+	})
+
+	t.Run("removes a token when a trusted host redirects to an untrusted host", func(t *testing.T) {
+		var trustedAuthHeader string
+		var untrustedAuthHeader string
+		untrusted := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			untrustedAuthHeader = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("PNG"))
+		}))
+		defer untrusted.Close()
+
+		trusted := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			trustedAuthHeader = r.Header.Get("Authorization")
+			http.Redirect(w, r, untrusted.URL, http.StatusFound)
+		}))
+		defer trusted.Close()
+
+		trustedURL, err := url.Parse(trusted.URL)
+		assert.NoError(t, err)
+		repo := NewHTTPImageRepositoryWithTrustedHosts("test-token", []string{trustedURL.Host})
+		repo.client = trusted.Client()
+		asset, err := repo.Fetch(context.Background(), NewImage(trusted.URL, "2021-01-01_000000", 0))
+		assert.NoError(t, err)
+		defer asset.Body.Close()
+		assert.Equal(t, "token test-token", trustedAuthHeader)
+		assert.Empty(t, untrustedAuthHeader)
+	})
+}
+
+func TestHTTPImageRepository_IsTrustedURL(t *testing.T) {
+	repo := NewHTTPImageRepositoryWithTrustedHosts("test-token", []string{"Example.COM:8443"})
+
+	assert.True(t, repo.isTrustedURL("https://example.com:8443/image.png"))
+	assert.True(t, repo.isTrustedURL("HTTPS://EXAMPLE.COM:8443/image.png"))
+	assert.False(t, repo.isTrustedURL("http://example.com:8443/image.png"))
+	assert.False(t, repo.isTrustedURL("https://example.com:8444/image.png"))
+}
+
+func TestHTTPImageRepository_TrustedRedirectRetainsToken(t *testing.T) {
+	var initialAuthHeader string
+	var redirectedAuthHeader string
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/redirect" {
+			initialAuthHeader = r.Header.Get("Authorization")
+			http.Redirect(w, r, "/image", http.StatusFound)
+			return
+		}
+		redirectedAuthHeader = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte("PNG"))
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+	repo := NewHTTPImageRepositoryWithTrustedHosts("test-token", []string{serverURL.Host})
+	repo.client = server.Client()
+	asset, err := repo.Fetch(context.Background(), NewImage(server.URL+"/redirect", "2021-01-01_000000", 0))
+	assert.NoError(t, err)
+	defer asset.Body.Close()
+	assert.Equal(t, "token test-token", initialAuthHeader)
+	assert.Equal(t, "token test-token", redirectedAuthHeader)
 }
 
 func TestHTTPImageRepository_Fetch_ReportsAuthenticatedAndFallbackFailures(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 
-	repo := NewHTTPImageRepositoryWithLogger("test-token", logger)
-	_, err := repo.Fetch(context.Background(), NewImage(server.URL, "2021-01-01_000000", 0))
+	serverURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+	repo := NewHTTPImageRepositoryWithTrustedHostsAndLogger("test-token", []string{serverURL.Host}, logger)
+	repo.client = server.Client()
+	_, err = repo.Fetch(context.Background(), NewImage(server.URL, "2021-01-01_000000", 0))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "authenticated request failed")
