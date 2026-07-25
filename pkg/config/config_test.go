@@ -67,10 +67,11 @@ func TestWriteAndReload_PreservesExplicitEmptyImageTargets(t *testing.T) {
 		Output: &OutputConfig{
 			Articles: NewOutputArticlesConfig(),
 			Images: &OutputImagesConfig{
-				Directory: "static/images",
-				Filename:  "[:id].png",
-				BaseURL:   Ptr("/images"),
-				Targets:   []string{},
+				Directory:    "static/images",
+				Filename:     "[:id].png",
+				BaseURL:      Ptr("/images"),
+				Targets:      []string{},
+				TrustedHosts: []string{},
 			},
 		},
 	}
@@ -86,6 +87,9 @@ func TestWriteAndReload_PreservesExplicitEmptyImageTargets(t *testing.T) {
 	if !strings.Contains(string(data), "targets: []") {
 		t.Fatalf("expected explicit empty targets in config, got:\n%s", string(data))
 	}
+	if !strings.Contains(string(data), "trusted_hosts: []") {
+		t.Fatalf("expected explicit empty trusted hosts in config, got:\n%s", string(data))
+	}
 
 	reloaded, err := Reload()
 	if err != nil {
@@ -99,5 +103,11 @@ func TestWriteAndReload_PreservesExplicitEmptyImageTargets(t *testing.T) {
 	}
 	if len(reloaded.Output.Images.TargetURLs()) != 0 {
 		t.Fatalf("target urls = %#v", reloaded.Output.Images.TargetURLs())
+	}
+	if reloaded.Output.Images.TrustedHosts == nil {
+		t.Fatal("trusted hosts became nil after reload")
+	}
+	if len(reloaded.Output.Images.TrustedImageHosts()) != 0 {
+		t.Fatalf("trusted hosts = %#v", reloaded.Output.Images.TrustedImageHosts())
 	}
 }
