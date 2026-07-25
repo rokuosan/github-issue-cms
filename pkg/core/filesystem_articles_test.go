@@ -27,6 +27,92 @@ func (r *fakeImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 	}, nil
 }
 
+type failingImageRepository struct{}
+
+func (failingImageRepository) Fetch(context.Context, *Image) (*ImageAsset, error) {
+	return &ImageAsset{
+		Body:        io.NopCloser(&failingReader{}),
+		ContentType: "image/png",
+	}, nil
+}
+
+type failingReader struct {
+	read bool
+}
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.read {
+		return 0, assert.AnError
+	}
+	r.read = true
+	copy(p, "partial")
+	return len("partial"), nil
+}
+
+func TestFileSystemArticleRepository_SaveImage_RemovesPartialFileOnFailure(t *testing.T) {
+	tempDir := t.TempDir()
+	conf := *config.NewConfig()
+	conf.Output.Images.Filename = "[:id].png"
+	repo := &FileSystemArticleRepository{imageRepo: failingImageRepository{}}
+
+	_, err := repo.saveImage(context.Background(), NewImage("https://example.com/image.png", "", 0), tempDir, conf, time.Now())
+	require.Error(t, err)
+	_, statErr := os.Stat(filepath.Join(tempDir, "0.png"))
+	assert.True(t, os.IsNotExist(statErr))
+}
+
+func TestFileSystemArticleRepository_SaveImage_RespectsProcessUmask(t *testing.T) {
+	tempDir := t.TempDir()
+	referencePath := filepath.Join(tempDir, "reference")
+	reference, err := os.OpenFile(referencePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o666)
+	require.NoError(t, err)
+	require.NoError(t, reference.Close())
+	referenceInfo, err := os.Stat(referencePath)
+	require.NoError(t, err)
+
+	conf := *config.NewConfig()
+	conf.Output.Images.Filename = "[:id].png"
+	repo := &FileSystemArticleRepository{imageRepo: &fakeImageRepository{contentType: "image/png", body: "png"}}
+
+	filename, err := repo.saveImage(context.Background(), NewImage("https://example.com/image.png", "", 0), tempDir, conf, time.Now())
+	require.NoError(t, err)
+	info, err := os.Stat(filepath.Join(tempDir, filename))
+	require.NoError(t, err)
+	assert.Equal(t, referenceInfo.Mode().Perm(), info.Mode().Perm())
+}
+
+func TestFileSystemArticleRepository_SaveImage_PreservesExistingFilePermissions(t *testing.T) {
+	tempDir := t.TempDir()
+	filename := "image.png"
+	fullPath := filepath.Join(tempDir, filename)
+	require.NoError(t, os.WriteFile(fullPath, []byte("old"), 0o600))
+	require.NoError(t, os.Chmod(fullPath, 0o600))
+
+	conf := *config.NewConfig()
+	conf.Output.Images.Filename = filename
+	repo := &FileSystemArticleRepository{imageRepo: &fakeImageRepository{contentType: "image/png", body: "new"}}
+
+	_, err := repo.saveImage(context.Background(), NewImage("https://example.com/image.png", "", 0), tempDir, conf, time.Now())
+	require.NoError(t, err)
+	info, err := os.Stat(fullPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
+
+func TestFileSystemArticleRepository_SaveImage_SupportsMaximumLengthFilename(t *testing.T) {
+	tempDir := t.TempDir()
+	filename := strings.Repeat("a", 251) + ".png"
+	conf := *config.NewConfig()
+	conf.Output.Images.Filename = filename
+	repo := &FileSystemArticleRepository{imageRepo: &fakeImageRepository{contentType: "image/png", body: "png"}}
+
+	savedFilename, err := repo.saveImage(context.Background(), NewImage("https://example.com/image.png", "", 0), tempDir, conf, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, filename, savedFilename)
+	_, err = os.Stat(filepath.Join(tempDir, savedFilename))
+	require.NoError(t, err)
+}
+
 func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
 	tests := []struct {
 		name              string
