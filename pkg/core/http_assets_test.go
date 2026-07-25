@@ -106,7 +106,7 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 
 	t.Run("request with token", func(t *testing.T) {
 		var authHeader string
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader = r.Header.Get("Authorization")
 			w.Header().Set("Content-Type", "image/png")
 			w.WriteHeader(http.StatusOK)
@@ -114,7 +114,8 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 		}))
 		defer server.Close()
 
-		repo := NewHTTPImageRepository("test-token")
+		repo := NewHTTPImageRepository("test-token").(*HTTPImageRepository)
+		repo.client = server.Client()
 		image := &Image{
 			URL:  server.URL,
 			Time: "2021-01-01_000000",
@@ -126,17 +127,59 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 		defer asset.Body.Close()
 		assertEqualCmp(t, "token test-token", authHeader)
 	})
+
+	t.Run("does not send token to HTTP URL", func(t *testing.T) {
+		var authHeader string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("PNG"))
+		}))
+		defer server.Close()
+
+		repo := NewHTTPImageRepository("test-token")
+		asset, err := repo.Fetch(context.Background(), NewImage(server.URL, "2021-01-01_000000", 0))
+		assert.NoError(t, err)
+		defer asset.Body.Close()
+		assert.Empty(t, authHeader)
+	})
+
+	t.Run("strips token on redirect from HTTPS to HTTP", func(t *testing.T) {
+		var httpsAuthHeader string
+		var httpAuthHeader string
+		httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			httpAuthHeader = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("PNG"))
+		}))
+		defer httpServer.Close()
+
+		httpsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			httpsAuthHeader = r.Header.Get("Authorization")
+			http.Redirect(w, r, httpServer.URL, http.StatusFound)
+		}))
+		defer httpsServer.Close()
+
+		repo := NewHTTPImageRepository("test-token").(*HTTPImageRepository)
+		repo.client = httpsServer.Client()
+		asset, err := repo.Fetch(context.Background(), NewImage(httpsServer.URL, "2021-01-01_000000", 0))
+		assert.NoError(t, err)
+		defer asset.Body.Close()
+		assert.Equal(t, "token test-token", httpsAuthHeader)
+		assert.Empty(t, httpAuthHeader)
+	})
 }
 
 func TestHTTPImageRepository_Fetch_ReportsAuthenticatedAndFallbackFailures(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 
-	repo := NewHTTPImageRepositoryWithLogger("test-token", logger)
+	repo := NewHTTPImageRepositoryWithLogger("test-token", logger).(*HTTPImageRepository)
+	repo.client = server.Client()
 	_, err := repo.Fetch(context.Background(), NewImage(server.URL, "2021-01-01_000000", 0))
 
 	assert.Error(t, err)

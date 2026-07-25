@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -49,15 +50,15 @@ func (r *HTTPImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 }
 
 // downloadImage downloads an image over HTTP.
-func (r *HTTPImageRepository) downloadImage(ctx context.Context, url string) (io.ReadCloser, string, error) {
-	// Try an authenticated request first so private attachments can be fetched.
-	if r.token != "" {
-		if body, contentType, err := r.sendRequest(ctx, url, true); err == nil {
+func (r *HTTPImageRepository) downloadImage(ctx context.Context, imageURL string) (io.ReadCloser, string, error) {
+	// Only send the token over HTTPS to prevent leaking credentials.
+	if r.token != "" && isHTTPS(imageURL) {
+		if body, contentType, err := r.sendRequest(ctx, imageURL, true); err == nil {
 			return body, contentType, nil
 		} else {
-			r.logger.Warn("authenticated image download failed; retrying without token", "url", url, "error", err)
+			r.logger.Warn("authenticated image download failed; retrying without token", "url", imageURL, "error", err)
 
-			body, contentType, fallbackErr := r.sendRequest(ctx, url, false)
+			body, contentType, fallbackErr := r.sendRequest(ctx, imageURL, false)
 			if fallbackErr == nil {
 				return body, contentType, nil
 			}
@@ -68,8 +69,8 @@ func (r *HTTPImageRepository) downloadImage(ctx context.Context, url string) (io
 		}
 	}
 
-	// No token was configured, so only an unauthenticated request is possible.
-	return r.sendRequest(ctx, url, false)
+	// No token was configured or the URL is not HTTPS — only an unauthenticated request is possible.
+	return r.sendRequest(ctx, imageURL, false)
 }
 
 // sendRequest sends an HTTP request.
@@ -79,11 +80,14 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 		return nil, "", err
 	}
 
+	client := r.client
 	if includeToken && r.token != "" {
 		req.Header.Set("Authorization", "token "+r.token)
+		// Prevent the token from leaking to a redirect destination.
+		client = r.clientWithRedirectGuard()
 	}
 
-	resp, err := r.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
@@ -96,6 +100,28 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 	}
 
 	return resp.Body, contentType, nil
+}
+
+// clientWithRedirectGuard returns a copy of the HTTP client that strips the
+// Authorization header on every redirect to prevent token leakage.
+func (r *HTTPImageRepository) clientWithRedirectGuard() *http.Client {
+	c := *r.client
+	c.CheckRedirect = func(redirectReq *http.Request, via []*http.Request) error {
+		redirectReq.Header.Del("Authorization")
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &c
+}
+
+func isHTTPS(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Scheme, "https")
 }
 
 func normalizeContentType(value string) string {
