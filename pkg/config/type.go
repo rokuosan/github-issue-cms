@@ -119,7 +119,7 @@ func NewOutputImagesConfig() *OutputImagesConfig {
 		Directory:    "static/images/%Y-%m-%d_%H%M%S",
 		Filename:     "[:id].png",
 		BaseURL:      &url,
-		TrustedHosts: defaultTrustedImageHosts,
+		TrustedHosts: append([]string(nil), defaultTrustedImageHosts...),
 	}
 }
 
@@ -169,6 +169,9 @@ func (c *Config) normalize() {
 	}
 	if c.Output.Images == nil {
 		c.Output.Images = &OutputImagesConfig{}
+	}
+	if c.Output.Images.TrustedHosts == nil {
+		c.Output.Images.TrustedHosts = append([]string(nil), defaultTrustedImageHosts...)
 	}
 
 	if c.Hugo == nil {

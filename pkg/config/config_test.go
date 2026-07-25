@@ -48,7 +48,7 @@ func TestConfigValidate_RejectsInvalidTrustedImageHosts(t *testing.T) {
 	}
 }
 
-func TestReload_UsesDefaultTrustedImageHostsWhenOmitted(t *testing.T) {
+func TestReload_MigratesOmittedTrustedImageHostsToDefaults(t *testing.T) {
 	tempDir := t.TempDir()
 	originalWd, err := os.Getwd()
 	if err != nil {
@@ -76,11 +76,21 @@ func TestReload_UsesDefaultTrustedImageHostsWhenOmitted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	if reloaded.Output.Images.TrustedHosts != nil {
-		t.Fatalf("trusted hosts = %#v, want omitted value", reloaded.Output.Images.TrustedHosts)
+	if reloaded.Output.Images.TrustedHosts == nil {
+		t.Fatal("trusted hosts were not migrated to defaults")
 	}
 	if got := reloaded.TrustedImageHosts(); len(got) != len(defaultTrustedImageHosts) {
 		t.Fatalf("trusted hosts = %#v, want defaults", got)
+	}
+	if err := Write(reloaded); err != nil {
+		t.Fatalf("write migrated config: %v", err)
+	}
+	data, err := os.ReadFile(GetConfigPath())
+	if err != nil {
+		t.Fatalf("read migrated config: %v", err)
+	}
+	if !strings.Contains(string(data), "trusted_hosts:") || !strings.Contains(string(data), "- github.com") {
+		t.Fatalf("expected migrated trusted hosts in config, got:\n%s", string(data))
 	}
 }
 
