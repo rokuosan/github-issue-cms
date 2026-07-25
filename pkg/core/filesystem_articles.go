@@ -179,6 +179,7 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	}
 	if preserveExistingMode {
 		if err := tempFile.Chmod(existingMode); err != nil {
+			_ = tempFile.Close()
 			return "", fmt.Errorf("failed to preserve image file permissions for %s: %w", fullPath, err)
 		}
 	}
