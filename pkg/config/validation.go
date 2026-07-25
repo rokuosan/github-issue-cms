@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 )
 
 func (c *Config) validate() error {
@@ -12,6 +14,7 @@ func (c *Config) validate() error {
 	}{
 		// Constraints
 		{"Failed to validate deprecated options", c.WarnDeprecatedOptions},
+		{"Failed to validate output.images.trusted_hosts", c.ValidTrustedImageHosts},
 	}
 
 	// Check
@@ -23,6 +26,20 @@ func (c *Config) validate() error {
 	}
 
 	return nil
+}
+
+func (c *Config) ValidTrustedImageHosts() bool {
+	if c.Output == nil || c.Output.Images == nil {
+		return true
+	}
+
+	for _, host := range c.Output.Images.TrustedImageHosts() {
+		parsed, err := url.Parse("https://" + host)
+		if err != nil || host == "" || parsed.Host != host || parsed.Hostname() == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || strings.Contains(host, "@") {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *Config) WarnDeprecatedOptions() bool {

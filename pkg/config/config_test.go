@@ -8,6 +8,39 @@ import (
 	"github.com/spf13/viper"
 )
 
+func TestOutputImagesConfig_TrustedImageHosts(t *testing.T) {
+	images := NewOutputImagesConfig()
+	expected := []string{
+		"github.com",
+		"user-images.githubusercontent.com",
+		"private-user-images.githubusercontent.com",
+	}
+	got := images.TrustedImageHosts()
+	if len(got) != len(expected) {
+		t.Fatalf("trusted hosts = %#v, want %#v", got, expected)
+	}
+	for i := range expected {
+		if got[i] != expected[i] {
+			t.Fatalf("trusted hosts = %#v, want %#v", got, expected)
+		}
+	}
+}
+
+func TestOutputImagesConfig_TrustedImageHosts_PreservesExplicitEmptyValue(t *testing.T) {
+	images := &OutputImagesConfig{TrustedHosts: []string{}}
+	if got := images.TrustedImageHosts(); len(got) != 0 {
+		t.Fatalf("trusted hosts = %#v, want empty", got)
+	}
+}
+
+func TestConfigValidate_RejectsInvalidTrustedImageHosts(t *testing.T) {
+	conf := NewConfig()
+	conf.Output.Images.TrustedHosts = []string{"https://github.com"}
+	if err := conf.validate(); err == nil {
+		t.Fatal("expected trusted host validation to fail")
+	}
+}
+
 func TestWriteAndReload_PreservesExplicitEmptyImageTargets(t *testing.T) {
 	tempDir := t.TempDir()
 

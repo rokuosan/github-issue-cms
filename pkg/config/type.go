@@ -26,16 +26,23 @@ type OutputArticlesConfig struct {
 }
 
 type OutputImagesConfig struct {
-	Directory string   `yaml:"directory" mapstructure:"directory"`
-	Filename  string   `yaml:"filename" mapstructure:"filename"`
-	BaseURL   *string  `yaml:"url" mapstructure:"url"`
-	Targets   []string `yaml:"targets" mapstructure:"targets"`
+	Directory    string   `yaml:"directory" mapstructure:"directory"`
+	Filename     string   `yaml:"filename" mapstructure:"filename"`
+	BaseURL      *string  `yaml:"url" mapstructure:"url"`
+	Targets      []string `yaml:"targets" mapstructure:"targets"`
+	TrustedHosts []string `yaml:"trusted_hosts" mapstructure:"trusted_hosts"`
 }
 
 var defaultImageTargets = []string{
 	"https://github.com/user-attachments/",
 	"https://user-images.githubusercontent.com/",
 	"https://private-user-images.githubusercontent.com/",
+}
+
+var defaultTrustedImageHosts = []string{
+	"github.com",
+	"user-images.githubusercontent.com",
+	"private-user-images.githubusercontent.com",
 }
 
 type HugoConfig struct {
@@ -109,9 +116,10 @@ func NewOutputArticlesConfig() *OutputArticlesConfig {
 func NewOutputImagesConfig() *OutputImagesConfig {
 	url := "/images/%Y-%m-%d_%H%M%S"
 	return &OutputImagesConfig{
-		Directory: "static/images/%Y-%m-%d_%H%M%S",
-		Filename:  "[:id].png",
-		BaseURL:   &url,
+		Directory:    "static/images/%Y-%m-%d_%H%M%S",
+		Filename:     "[:id].png",
+		BaseURL:      &url,
+		TrustedHosts: defaultTrustedImageHosts,
 	}
 }
 
@@ -127,6 +135,13 @@ func (c *OutputImagesConfig) TargetURLs() []string {
 		return defaultImageTargets
 	}
 	return c.Targets
+}
+
+func (c *OutputImagesConfig) TrustedImageHosts() []string {
+	if c == nil || c.TrustedHosts == nil {
+		return defaultTrustedImageHosts
+	}
+	return c.TrustedHosts
 }
 
 func (c *Config) normalize() {
