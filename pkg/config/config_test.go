@@ -33,11 +33,54 @@ func TestOutputImagesConfig_TrustedImageHosts_PreservesExplicitEmptyValue(t *tes
 	}
 }
 
+func TestConfig_TrustedImageHosts_WithPartialConfigUsesDefaults(t *testing.T) {
+	conf := Config{}
+	if got := conf.TrustedImageHosts(); len(got) != len(defaultTrustedImageHosts) {
+		t.Fatalf("trusted hosts = %#v, want defaults", got)
+	}
+}
+
 func TestConfigValidate_RejectsInvalidTrustedImageHosts(t *testing.T) {
 	conf := NewConfig()
 	conf.Output.Images.TrustedHosts = []string{"https://github.com"}
 	if err := conf.validate(); err == nil {
 		t.Fatal("expected trusted host validation to fail")
+	}
+}
+
+func TestReload_UsesDefaultTrustedImageHostsWhenOmitted(t *testing.T) {
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Fatalf("restore wd: %v", err)
+		}
+		config = Config{}
+		viper.Reset()
+	})
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	config = Config{}
+	viper.Reset()
+
+	contents := "output:\n  images:\n    directory: static/images\n    filename: '[:id].png'\n    url: /images\n"
+	if err := os.WriteFile(GetConfigPath(), []byte(contents), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	reloaded, err := Reload()
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if reloaded.Output.Images.TrustedHosts != nil {
+		t.Fatalf("trusted hosts = %#v, want omitted value", reloaded.Output.Images.TrustedHosts)
+	}
+	if got := reloaded.TrustedImageHosts(); len(got) != len(defaultTrustedImageHosts) {
+		t.Fatalf("trusted hosts = %#v, want defaults", got)
 	}
 }
 

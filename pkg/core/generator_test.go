@@ -30,6 +30,12 @@ func TestNewArticleGenerator(t *testing.T) {
 	})
 }
 
+func TestNewArticleGeneratorWithPartialConfig(t *testing.T) {
+	gen, err := NewArticleGenerator(config.Config{}, "test-token")
+	assert.NoError(t, err)
+	assert.NotNil(t, gen)
+}
+
 func TestArticleGenerator_ConvertIssueToArticle(t *testing.T) {
 	conf := *config.NewConfig()
 	conf.Output.Images.BaseURL = Ptr("/images")

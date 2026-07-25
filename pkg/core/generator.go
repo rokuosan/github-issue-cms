@@ -46,7 +46,7 @@ func NewArticleGeneratorWithLogger(conf config.Config, token string, logger *slo
 		return nil, err
 	}
 
-	imageRepo := NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, conf.Output.Images.TrustedImageHosts(), logger)
+	imageRepo := NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, conf.TrustedImageHosts(), logger)
 	articleRepo := NewFileSystemArticleRepositoryWithLogger(imageRepo, logger)
 
 	// Initialize services.

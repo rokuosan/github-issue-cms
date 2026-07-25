@@ -144,6 +144,13 @@ func (c *OutputImagesConfig) TrustedImageHosts() []string {
 	return c.TrustedHosts
 }
 
+func (c *Config) TrustedImageHosts() []string {
+	if c == nil || c.Output == nil {
+		return defaultTrustedImageHosts
+	}
+	return c.Output.Images.TrustedImageHosts()
+}
+
 func (c *Config) normalize() {
 	if c.GitHub == nil {
 		c.GitHub = NewGitHubConfig()
