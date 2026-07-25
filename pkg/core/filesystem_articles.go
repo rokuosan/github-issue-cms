@@ -157,6 +157,15 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	}
 
 	fullPath := filepath.Join(imageDir, filename)
+	var existingMode os.FileMode
+	preserveExistingMode := false
+	if info, err := os.Stat(fullPath); err == nil {
+		existingMode = info.Mode().Perm()
+		preserveExistingMode = true
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to stat existing image file %s: %w", fullPath, err)
+	}
+
 	tempFile, err := createImageTempFile(imageDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary image file in %s: %w", imageDir, err)
@@ -167,6 +176,11 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	if _, err := io.Copy(tempFile, asset.Body); err != nil {
 		_ = tempFile.Close()
 		return "", fmt.Errorf("failed to write image to %s: %w", fullPath, err)
+	}
+	if preserveExistingMode {
+		if err := tempFile.Chmod(existingMode); err != nil {
+			return "", fmt.Errorf("failed to preserve image file permissions for %s: %w", fullPath, err)
+		}
 	}
 	if err := tempFile.Close(); err != nil {
 		return "", fmt.Errorf("failed to close image file %s: %w", fullPath, err)

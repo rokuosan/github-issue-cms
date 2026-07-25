@@ -81,6 +81,24 @@ func TestFileSystemArticleRepository_SaveImage_RespectsProcessUmask(t *testing.T
 	assert.Equal(t, referenceInfo.Mode().Perm(), info.Mode().Perm())
 }
 
+func TestFileSystemArticleRepository_SaveImage_PreservesExistingFilePermissions(t *testing.T) {
+	tempDir := t.TempDir()
+	filename := "image.png"
+	fullPath := filepath.Join(tempDir, filename)
+	require.NoError(t, os.WriteFile(fullPath, []byte("old"), 0o600))
+	require.NoError(t, os.Chmod(fullPath, 0o600))
+
+	conf := *config.NewConfig()
+	conf.Output.Images.Filename = filename
+	repo := &FileSystemArticleRepository{imageRepo: &fakeImageRepository{contentType: "image/png", body: "new"}}
+
+	_, err := repo.saveImage(context.Background(), NewImage("https://example.com/image.png", "", 0), tempDir, conf, time.Now())
+	require.NoError(t, err)
+	info, err := os.Stat(fullPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
+
 func TestFileSystemArticleRepository_SaveImage_SupportsMaximumLengthFilename(t *testing.T) {
 	tempDir := t.TempDir()
 	filename := strings.Repeat("a", 251) + ".png"
