@@ -53,3 +53,6 @@ release:
     owner: rokuosan
     name: github-issue-cms
   prerelease: auto
+  # Reuse a leftover draft from a previously failed run instead of creating
+  # a new one each retry, so failed drafts don't pile up.
+  use_existing_draft: true
