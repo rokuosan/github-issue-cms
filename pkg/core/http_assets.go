@@ -113,7 +113,7 @@ func (r *HTTPImageRepository) clientWithRedirectGuard() *http.Client {
 			redirectReq.Header.Del("Authorization")
 		}
 		if len(via) >= maxRedirects {
-			return errors.New("stopped after 10 redirects")
+			return fmt.Errorf("stopped after %d redirects", maxRedirects)
 		}
 		return nil
 	}
