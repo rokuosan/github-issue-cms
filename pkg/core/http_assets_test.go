@@ -168,6 +168,30 @@ func TestHTTPImageRepository_Download(t *testing.T) {
 		assert.Equal(t, "token test-token", httpsAuthHeader)
 		assert.Empty(t, httpAuthHeader)
 	})
+
+	t.Run("retains token on redirect to another HTTPS URL", func(t *testing.T) {
+		var initialAuthHeader string
+		var redirectedAuthHeader string
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/redirect" {
+				initialAuthHeader = r.Header.Get("Authorization")
+				http.Redirect(w, r, "/image", http.StatusFound)
+				return
+			}
+			redirectedAuthHeader = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("PNG"))
+		}))
+		defer server.Close()
+
+		repo := NewHTTPImageRepository("test-token").(*HTTPImageRepository)
+		repo.client = server.Client()
+		asset, err := repo.Fetch(context.Background(), NewImage(server.URL+"/redirect", "2021-01-01_000000", 0))
+		assert.NoError(t, err)
+		defer asset.Body.Close()
+		assert.Equal(t, "token test-token", initialAuthHeader)
+		assert.Equal(t, "token test-token", redirectedAuthHeader)
+	})
 }
 
 func TestHTTPImageRepository_Fetch_ReportsAuthenticatedAndFallbackFailures(t *testing.T) {

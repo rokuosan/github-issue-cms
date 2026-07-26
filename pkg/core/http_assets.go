@@ -103,11 +103,14 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 }
 
 // clientWithRedirectGuard returns a copy of the HTTP client that strips the
-// Authorization header on every redirect to prevent token leakage.
+// Authorization header when redirecting from HTTPS to HTTP to prevent token
+// leakage. Redirects to other HTTPS URLs retain the token.
 func (r *HTTPImageRepository) clientWithRedirectGuard() *http.Client {
 	c := *r.client
 	c.CheckRedirect = func(redirectReq *http.Request, via []*http.Request) error {
-		redirectReq.Header.Del("Authorization")
+		if !isHTTPS(redirectReq.URL.String()) {
+			redirectReq.Header.Del("Authorization")
+		}
 		if len(via) >= 10 {
 			return errors.New("stopped after 10 redirects")
 		}
