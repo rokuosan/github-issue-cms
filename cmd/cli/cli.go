@@ -41,6 +41,7 @@ with frontmatter and downloads attached images.`,
 	rootCmd.AddCommand(subcommand.NewInitCommand())
 	rootCmd.AddCommand(subcommand.NewMigrateCommand())
 	rootCmd.AddCommand(subcommand.NewVersionCommand(&Version))
+	rootCmd.AddCommand(subcommand.NewOGCImageCommand())
 
 	return rootCmd
 }
