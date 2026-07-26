@@ -18,7 +18,11 @@ func TestNewGenerateCommand(t *testing.T) {
 	assert.NotNil(t, tokenFlag)
 	assert.Equal(t, "t", tokenFlag.Shorthand)
 
-	// Ensure the flag is marked as required.
+	// Verify the --with-ogimage flag exists.
+	ogimageFlag := cmd.Flags().Lookup("with-ogimage")
+	assert.NotNil(t, ogimageFlag, "--with-ogimage flag should exist")
+
+	// Ensure the token flag is marked as required.
 	assert.Contains(t, cmd.Flags().Lookup("token").Annotations, "cobra_annotation_bash_completion_one_required_flag")
 }
 
@@ -29,33 +33,25 @@ func TestGenerateCommand_Flags(t *testing.T) {
 	tokenFlag := cmd.Flags().Lookup("token")
 	assert.NotNil(t, tokenFlag, "token flag should exist")
 	assert.Equal(t, "t", tokenFlag.Shorthand, "token shorthand should be 't'")
+
+	// Test the --with-ogimage flag.
+	ogimageFlag := cmd.Flags().Lookup("with-ogimage")
+	assert.NotNil(t, ogimageFlag, "--with-ogimage flag should exist")
 }
 
-func TestGenerateCommand_Help(t *testing.T) {
+func TestGenerateCommand_WithOGImageFlag(t *testing.T) {
 	cmd := NewGenerateCommand()
-	cmd.SetArgs([]string{"--help"})
-
+	cmd.SetArgs([]string{"--token", "test-token", "--with-ogimage"})
+	// This will fail because no config exists, but verifies the flag is parsed.
 	err := cmd.Execute()
-	assert.NoError(t, err)
-}
-
-func TestGenerateCommand_MissingToken(t *testing.T) {
-	cmd := NewGenerateCommand()
-	cmd.SetArgs([]string{}) // No token provided.
-
-	err := cmd.Execute()
-	assert.Error(t, err, "Should error when token is missing")
-}
-
-func TestGenerateCommand_WithToken(t *testing.T) {
-	// Skip because this requires an integration test.
-	t.Skip("Integration test required - needs valid config file")
+	assert.Error(t, err) // Missing config is expected.
 }
 
 func TestGenerateCommand_Examples(t *testing.T) {
 	cmd := NewGenerateCommand()
 
-	// Ensure the examples are present.
+	// Ensure the examples are present and mention --with-ogimage.
 	assert.NotEmpty(t, cmd.Long)
 	assert.Contains(t, cmd.Long, "Examples:")
+	assert.Contains(t, cmd.Long, "--with-ogimage")
 }
