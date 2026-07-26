@@ -49,6 +49,9 @@ Run this application with your GitHub Access Token
 $ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
 ```
 
+> [!NOTE]
+> If your issues have images attached via drag-and-drop (`https://github.com/user-attachments/assets/...`) in a **private** repository, use a **classic** Personal Access Token. Fine-grained PATs and GitHub App installation tokens (including the Actions-provided `GITHUB_TOKEN`) are not accepted by GitHub's attachment download endpoint and will cause image downloads to fail with a 404.
+
 If your repository has issues and attached images, they will be exported like this tree.
 
 These output paths are configurable, so you can adapt them to your site or build pipeline.
@@ -74,6 +77,9 @@ $ tree --dirsfirst
 ### 4. (Optional) Auto commit with GitHub Actions
 
 GitHub Actions provides a built-in `GITHUB_TOKEN`, so you do not need to create a separate repository secret for this workflow.
+
+> [!NOTE]
+> The built-in `GITHUB_TOKEN` is an installation token, so for a **private** repository it cannot download images attached via drag-and-drop (see the note above). If you need those images, use a classic PAT stored as a repository secret instead.
 
 Next, write this workflow with the permissions required to read issues and commit generated files.
 
