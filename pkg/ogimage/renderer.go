@@ -5,9 +5,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"html/template"
 	"os"
 	"strings"
-	"text/template"
+	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -49,8 +50,7 @@ func NewRendererWithTemplate(tmplPath string, browserBin string) (*Renderer, err
 }
 
 // Render executes the template with the given data, opens a headless browser
-// page, and captures a 1200×630 JPEG screenshot. The caller is responsible for
-// closing the returned browser resources.
+// page, and captures a 1200×630 JPEG screenshot.
 func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	html, err := r.executeTemplate(data)
 	if err != nil {
@@ -61,10 +61,13 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ogimage: launch browser: %w", err)
 	}
-	defer browser.MustClose()
+	defer closeBrowser(browser)
 
-	page := browser.MustPage()
-	defer page.MustClose()
+	page, err := browser.Page(proto.TargetCreateTarget{URL: "about:blank"})
+	if err != nil {
+		return nil, fmt.Errorf("ogimage: create page: %w", err)
+	}
+	defer closePage(page)
 
 	if err := page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{
 		Width:             1200,
@@ -79,7 +82,7 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 		return nil, fmt.Errorf("ogimage: set content: %w", err)
 	}
 
-	if err := page.WaitStable(1); err != nil {
+	if err := page.WaitStable(1 * time.Second); err != nil {
 		return nil, fmt.Errorf("ogimage: wait stable: %w", err)
 	}
 
@@ -120,13 +123,13 @@ func (r *Renderer) launchBrowser(ctx context.Context) (*rod.Browser, error) {
 		l = launcher.New()
 	}
 
-	l = l.Headless(true).NoSandbox(true).Leakless(false)
+	l = l.Headless(true).NoSandbox(true).Leakless(false).Context(ctx)
 	url, err := l.Launch()
 	if err != nil {
 		return nil, fmt.Errorf("launch chromium: %w (hint: set GIC_CHROMIUM_BIN to an explicit chromium binary path)", err)
 	}
 
-	browser := rod.New().ControlURL(url)
+	browser := rod.New().ControlURL(url).Context(ctx)
 	if err := browser.Connect(); err != nil {
 		return nil, fmt.Errorf("connect to browser: %w", err)
 	}
@@ -141,4 +144,21 @@ func (r *Renderer) resolveChromiumBin() string {
 		return bin
 	}
 	return r.browserBin
+}
+
+// closeBrowser closes the browser and logs any error (panics from MustClose
+// are avoided by using the error-returning Close API).
+func closeBrowser(browser *rod.Browser) {
+	if err := browser.Close(); err != nil {
+		// Browser close failure is non-fatal during cleanup.
+		_ = err
+	}
+}
+
+// closePage closes the page and logs any error.
+func closePage(page *rod.Page) {
+	if err := page.Close(); err != nil {
+		// Page close failure is non-fatal during cleanup.
+		_ = err
+	}
 }
