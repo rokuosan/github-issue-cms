@@ -87,7 +87,7 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	}
 
 	quality := 90
-	screenshot, err := page.Screenshot(true, &proto.PageCaptureScreenshot{
+	screenshot, err := page.Screenshot(false, &proto.PageCaptureScreenshot{
 		Format:  proto.PageCaptureScreenshotFormatJpeg,
 		Quality: &quality,
 		Clip: &proto.PageViewport{
