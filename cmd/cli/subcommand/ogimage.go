@@ -107,7 +107,11 @@ func runOGCImage(cmd *cobra.Command, markdownFile, templateFile string) error {
 }
 
 // articleToOGPData converts a core.Article to ogimage.OGPData.
+// Returns zero-value OGPData if article is nil.
 func articleToOGPData(article *core.Article) ogimage.OGPData {
+	if article == nil {
+		return ogimage.OGPData{}
+	}
 	return ogimage.OGPData{
 		Title:    article.Title,
 		Author:   article.Author,
@@ -136,6 +140,13 @@ func formatDateForOGP(dateStr string) string {
 // resolveOGPOutputPath resolves the output path for the OGP image.
 // It uses the image output directory from config and saves as "ogp.jpeg".
 func resolveOGPOutputPath(conf config.Config, article *core.Article) (string, error) {
+	if article == nil {
+		return "", fmt.Errorf("article is nil")
+	}
+	if conf.Output == nil || conf.Output.Images == nil {
+		return "", fmt.Errorf("output images config is not set")
+	}
+
 	datetime, err := article.ParseDateTime()
 	if err != nil {
 		// Fall back to current time if we can't parse the article date.
@@ -148,5 +159,5 @@ func resolveOGPOutputPath(conf config.Config, article *core.Article) (string, er
 	}
 	imageDir = config.CompileTimeTemplate(datetime, imageDir)
 
-	return filepath.Join(imageDir, "ogp.jpeg"), nil
+	return filepath.Clean(filepath.Join(imageDir, "ogp.jpeg")), nil
 }
