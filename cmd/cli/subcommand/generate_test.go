@@ -3,7 +3,10 @@ package subcommand
 import (
 	"testing"
 
+	"github.com/rokuosan/github-issue-cms/pkg/config"
+	"github.com/rokuosan/github-issue-cms/pkg/core"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewGenerateCommand(t *testing.T) {
@@ -54,4 +57,46 @@ func TestGenerateCommand_Examples(t *testing.T) {
 	assert.NotEmpty(t, cmd.Long)
 	assert.Contains(t, cmd.Long, "Examples:")
 	assert.Contains(t, cmd.Long, "--with-ogimage")
+}
+
+func TestResolveOGPArticlePath(t *testing.T) {
+	t.Run("uses article key as subdirectory", func(t *testing.T) {
+		conf := testConfig(t.TempDir() + "/articles")
+		article := &core.Article{
+			Date: "2024-01-15T10:30:00Z",
+			Key:  "2024-01-15_103000",
+		}
+
+		path, err := resolveOGPArticlePath(conf, article)
+		require.NoError(t, err)
+		assert.Contains(t, path, "ogp.jpeg")
+		assert.Contains(t, path, "2024-01-15_103000")
+	})
+
+	t.Run("falls back to datetime when key is empty", func(t *testing.T) {
+		conf := testConfig(t.TempDir() + "/articles")
+		article := &core.Article{
+			Date: "2024-01-15T10:30:00Z",
+		}
+
+		path, err := resolveOGPArticlePath(conf, article)
+		require.NoError(t, err)
+		assert.Contains(t, path, "ogp.jpeg")
+	})
+
+	t.Run("nil article returns error", func(t *testing.T) {
+		conf := testConfig(t.TempDir() + "/articles")
+		_, err := resolveOGPArticlePath(conf, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "article is nil")
+	})
+
+	t.Run("nil output config returns error", func(t *testing.T) {
+		conf := config.Config{}
+		article := &core.Article{
+			Date: "2024-01-15T10:30:00Z",
+		}
+		_, err := resolveOGPArticlePath(conf, article)
+		assert.Error(t, err)
+	})
 }

@@ -99,8 +99,17 @@ func runGenerate(cmd *cobra.Command, githubToken string, withOGImage bool) error
 }
 
 // generateOGPForArticle renders an OGP image for the given article and saves
-// it as "ogp.jpeg" in the article's output directory.
+// it in a unique subdirectory derived from the article's Key.
 func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogimage.Renderer, article *core.Article) error {
+	if article == nil {
+		return fmt.Errorf("article is nil")
+	}
+
+	// Check context before expensive render.
+	if err := cmd.Context().Err(); err != nil {
+		return fmt.Errorf("context cancelled before OGP render: %w", err)
+	}
+
 	data := articleToOGPData(article)
 
 	jpeg, err := renderer.Render(cmd.Context(), data)
@@ -126,8 +135,16 @@ func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogi
 }
 
 // resolveOGPArticlePath returns the path where the OGP image should be saved
-// for an article. It places "ogp.jpeg" in the same directory as the article.
+// for an article. It places "ogp.jpeg" in a subdirectory keyed by the
+// article's unique Key (datetime), avoiding overwrites between articles.
 func resolveOGPArticlePath(conf config.Config, article *core.Article) (string, error) {
+	if article == nil {
+		return "", fmt.Errorf("article is nil")
+	}
+	if conf.Output == nil || conf.Output.Articles == nil {
+		return "", fmt.Errorf("output articles config is not set")
+	}
+
 	datetime, err := article.ParseDateTime()
 	if err != nil {
 		datetime = time.Now()
@@ -139,5 +156,13 @@ func resolveOGPArticlePath(conf config.Config, article *core.Article) (string, e
 	}
 	articleDir = config.CompileTimeTemplate(datetime, articleDir)
 
-	return filepath.Join(articleDir, "ogp.jpeg"), nil
+	// Use the article's Key (unique datetime string) as a subdirectory
+	// to ensure each article gets its own ogp.jpeg without overwrites.
+	// Fall back to the formatted datetime if Key is empty.
+	key := article.Key
+	if key == "" {
+		key = datetime.Format("2006-01-02_150405")
+	}
+
+	return filepath.Clean(filepath.Join(articleDir, key, "ogp.jpeg")), nil
 }
