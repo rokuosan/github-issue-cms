@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
@@ -76,13 +75,20 @@ func runGenerate(cmd *cobra.Command, githubToken string, withOGImage bool) error
 	}
 
 	// Set up OGP image generation hook if requested.
+	var ogpOK, ogpFail int
 	if withOGImage {
 		renderer, err := ogimage.NewRenderer("")
 		if err != nil {
 			return fmt.Errorf("failed to create OGP renderer: %w", err)
 		}
 		generator.SetOnArticleSaved(func(article *core.Article) error {
-			return generateOGPForArticle(cmd, conf, renderer, article)
+			err := generateOGPForArticle(cmd, conf, renderer, article)
+			if err != nil {
+				ogpFail++
+				return err
+			}
+			ogpOK++
+			return nil
 		})
 		slog.Info("OGP image generation enabled (--with-ogimage)")
 	}
@@ -94,7 +100,11 @@ func runGenerate(cmd *cobra.Command, githubToken string, withOGImage bool) error
 		return fmt.Errorf("failed to generate articles: %w", err)
 	}
 
-	slog.Info("Complete: " + strconv.Itoa(count) + " articles generated")
+	if withOGImage {
+		slog.Info(fmt.Sprintf("Complete: %d articles generated, %d OGP images (%d failed)", count, ogpOK, ogpFail))
+	} else {
+		slog.Info(fmt.Sprintf("Complete: %d articles generated", count))
+	}
 	return nil
 }
 
