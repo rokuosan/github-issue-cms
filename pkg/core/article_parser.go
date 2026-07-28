@@ -25,14 +25,36 @@ func ParseArticleFromMarkdown(path string) (*Article, error) {
 }
 
 func parseArticleContent(content string) (*Article, error) {
+	// Normalize line endings: Windows CRLF → LF.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+
+	// Ensure the content starts with the opening delimiter.
+	if !strings.HasPrefix(content, "---\n") && !strings.HasPrefix(content, "---\r") {
+		return nil, fmt.Errorf("invalid markdown: missing opening frontmatter delimiter")
+	}
+
+	// Strip the opening "---\n".
 	trimmed := strings.TrimPrefix(content, "---\n")
+
+	// Find the closing delimiter. Try both "\n---\n" and "\n---" (EOF without trailing \n).
 	end := strings.Index(trimmed, "\n---\n")
+	if end < 0 {
+		end = strings.Index(trimmed, "\n---")
+	}
 	if end < 0 {
 		return nil, fmt.Errorf("invalid markdown: missing closing frontmatter delimiter")
 	}
 
 	fmRaw := trimmed[:end]
-	body := trimmed[end+5:] // skip "\n---\n"
+
+	// Calculate body start: skip past the closing delimiter.
+	bodyStart := end
+	if strings.HasPrefix(trimmed[bodyStart:], "\n---\n") {
+		bodyStart += 5 // len("\n---\n")
+	} else if strings.HasPrefix(trimmed[bodyStart:], "\n---") {
+		bodyStart += 4 // len("\n---")
+	}
+	body := trimmed[bodyStart:]
 
 	article := &Article{
 		Content: body,
