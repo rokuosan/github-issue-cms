@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ var DefaultTemplate string
 type Renderer struct {
 	tmpl       *template.Template
 	browserBin string
+	tmplDir    string // directory of custom template (empty for embedded)
 }
 
 // NewRenderer creates a Renderer using the embedded default template.
@@ -41,12 +43,22 @@ func NewRenderer(browserBin string) (*Renderer, error) {
 
 // NewRendererWithTemplate creates a Renderer from a custom template file.
 // If browserBin is empty, go-rod's launcher auto-downloads and caches Chromium.
+// The template file's directory is preserved so relative asset references
+// (images, stylesheets) in the template resolve correctly.
 func NewRendererWithTemplate(tmplPath string, browserBin string) (*Renderer, error) {
 	tmpl, err := template.ParseFiles(tmplPath)
 	if err != nil {
 		return nil, fmt.Errorf("ogimage: parse template %s: %w", tmplPath, err)
 	}
-	return &Renderer{tmpl: tmpl, browserBin: browserBin}, nil
+	absPath, err := filepath.Abs(tmplPath)
+	if err != nil {
+		absPath = tmplPath
+	}
+	return &Renderer{
+		tmpl:       tmpl,
+		browserBin: browserBin,
+		tmplDir:    filepath.Dir(absPath),
+	}, nil
 }
 
 // Render executes the template with the given data, opens a headless browser
@@ -63,7 +75,14 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	}
 	defer closeBrowser(browser)
 
-	page, err := browser.Page(proto.TargetCreateTarget{URL: "about:blank"})
+	pageURL := "about:blank"
+	if r.tmplDir != "" {
+		// Use a file:// URL based on the template directory so relative
+		// asset references (e.g. <img src="logo.png">) resolve correctly.
+		pageURL = "file://" + filepath.ToSlash(r.tmplDir) + "/"
+	}
+
+	page, err := browser.Page(proto.TargetCreateTarget{URL: pageURL})
 	if err != nil {
 		return nil, fmt.Errorf("ogimage: create page: %w", err)
 	}
@@ -131,6 +150,7 @@ func (r *Renderer) launchBrowser(ctx context.Context) (*rod.Browser, error) {
 
 	browser := rod.New().ControlURL(url).Context(ctx)
 	if err := browser.Connect(); err != nil {
+		l.Kill()
 		return nil, fmt.Errorf("connect to browser: %w", err)
 	}
 
