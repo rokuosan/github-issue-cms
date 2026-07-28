@@ -64,6 +64,11 @@ func NewRendererWithTemplate(tmplPath string, browserBin string) (*Renderer, err
 // Render executes the template with the given data, opens a headless browser
 // page, and captures a 1200×630 JPEG screenshot.
 func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
+	// Check context before launching expensive browser process.
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("ogimage: context cancelled before render: %w", err)
+	}
+
 	html, err := r.executeTemplate(data)
 	if err != nil {
 		return nil, err
@@ -79,7 +84,7 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	if r.tmplDir != "" {
 		// Use a file:// URL based on the template directory so relative
 		// asset references (e.g. <img src="logo.png">) resolve correctly.
-		pageURL = "file://" + filepath.ToSlash(r.tmplDir) + "/"
+		pageURL = "file:///" + filepath.ToSlash(r.tmplDir) + "/"
 	}
 
 	page, err := browser.Page(proto.TargetCreateTarget{URL: pageURL})
@@ -87,6 +92,10 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 		return nil, fmt.Errorf("ogimage: create page: %w", err)
 	}
 	defer closePage(page)
+
+	// Enforce a per-page timeout so WaitStable and Screenshot cannot hang
+	// indefinitely even if the caller's context has no deadline.
+	page = page.Timeout(30 * time.Second)
 
 	if err := page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{
 		Width:             1200,
@@ -142,7 +151,7 @@ func (r *Renderer) launchBrowser(ctx context.Context) (*rod.Browser, error) {
 		l = launcher.New()
 	}
 
-	l = l.Headless(true).NoSandbox(true).Leakless(false).Context(ctx)
+	l = l.Headless(true).NoSandbox(true).Leakless(true).Context(ctx)
 	url, err := l.Launch()
 	if err != nil {
 		return nil, fmt.Errorf("launch chromium: %w (hint: set GIC_CHROMIUM_BIN to an explicit chromium binary path)", err)
