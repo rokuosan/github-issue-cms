@@ -131,6 +131,7 @@ func (r *Renderer) launchBrowser(ctx context.Context) (*rod.Browser, error) {
 
 	browser := rod.New().ControlURL(url).Context(ctx)
 	if err := browser.Connect(); err != nil {
+		l.Kill()
 		return nil, fmt.Errorf("connect to browser: %w", err)
 	}
 
