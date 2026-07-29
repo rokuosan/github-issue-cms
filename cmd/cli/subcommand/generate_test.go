@@ -100,6 +100,32 @@ func TestResolveOGPArticlePath(t *testing.T) {
 		assert.Equal(t, "content/posts/2024-01-15_103000.ogp.jpeg", path)
 	})
 
+	t.Run("non-md extension stays adjacent by appending", func(t *testing.T) {
+		conf := testConfig(t.TempDir() + "/articles")
+		conf.Output.Articles.Filename = "%Y-%m-%d.post"
+		article := &core.Article{
+			Date: "2024-01-15T10:30:00Z",
+		}
+
+		path, err := resolveOGPArticlePath(conf, article)
+		require.NoError(t, err)
+		// Non-markdown extensions are NOT stripped — the OGP appends to the
+		// full filename so it always stays adjacent to the markdown.
+		assert.Equal(t, "content/posts/2024-01-15.post.ogp.jpeg", path)
+	})
+
+	t.Run(".markdown extension is stripped like .md", func(t *testing.T) {
+		conf := testConfig(t.TempDir() + "/articles")
+		conf.Output.Articles.Filename = "%Y-%m-%d.markdown"
+		article := &core.Article{
+			Date: "2024-01-15T10:30:00Z",
+		}
+
+		path, err := resolveOGPArticlePath(conf, article)
+		require.NoError(t, err)
+		assert.Equal(t, "content/posts/2024-01-15.ogp.jpeg", path)
+	})
+
 	t.Run("nil article returns error", func(t *testing.T) {
 		conf := testConfig(t.TempDir() + "/articles")
 		_, err := resolveOGPArticlePath(conf, nil)

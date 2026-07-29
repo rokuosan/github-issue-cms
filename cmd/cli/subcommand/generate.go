@@ -181,16 +181,19 @@ func resolveOGPArticlePath(conf config.Config, article *core.Article) (string, e
 	// If the article is saved as a page bundle (index.md), the directory
 	// already uniquely identifies the article — place ogp.jpeg there.
 	// Otherwise (flat layout), save the OGP image as a unique file adjacent
-	// to the markdown file by swapping the extension: e.g. with filename
-	// "%Y-%m-%d_%H%M%S.md" the markdown is saved as "2024-01-15_103000.md"
-	// and the OGP image as "2024-01-15_103000.ogp.jpeg" in the same
-	// directory. Placing it in a "<key>/ogp.jpeg" subdirectory would orphan
-	// the image, since that directory is not a Hugo page bundle.
+	// to the markdown file. The OGP name is derived by appending ".ogp.jpeg"
+	// after stripping ONLY a known markdown extension (.md/.markdown); for
+	// any other extension we append to the full filename so the image always
+	// stays adjacent to the markdown (e.g. "my.post" → "my.post.ogp.jpeg").
 	articleFilename := config.CompileTimeTemplate(datetime, conf.Output.Articles.Filename)
 	if articleFilename == "index.md" {
 		return filepath.Clean(filepath.Join(articleDir, "ogp.jpeg")), nil
 	}
 
-	ogpName := strings.TrimSuffix(articleFilename, filepath.Ext(articleFilename)) + ".ogp.jpeg"
+	base := articleFilename
+	if ext := filepath.Ext(articleFilename); ext == ".md" || ext == ".markdown" {
+		base = strings.TrimSuffix(articleFilename, ext)
+	}
+	ogpName := base + ".ogp.jpeg"
 	return filepath.Clean(filepath.Join(articleDir, ogpName)), nil
 }
