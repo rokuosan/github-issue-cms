@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
@@ -155,17 +157,62 @@ func (r *FileSystemArticleRepository) saveImage(ctx context.Context, image *Imag
 	}
 
 	fullPath := filepath.Join(imageDir, filename)
-	file, err := os.Create(fullPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create file %s: %w", fullPath, err)
+	var existingMode os.FileMode
+	preserveExistingMode := false
+	if info, err := os.Stat(fullPath); err == nil {
+		existingMode = info.Mode().Perm()
+		preserveExistingMode = true
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to stat existing image file %s: %w", fullPath, err)
 	}
-	defer file.Close()
 
-	if _, err := io.Copy(file, asset.Body); err != nil {
+	tempFile, err := createImageTempFile(imageDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary image file in %s: %w", imageDir, err)
+	}
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
+
+	if _, err := io.Copy(tempFile, asset.Body); err != nil {
+		_ = tempFile.Close()
 		return "", fmt.Errorf("failed to write image to %s: %w", fullPath, err)
+	}
+	if preserveExistingMode {
+		if err := tempFile.Chmod(existingMode); err != nil {
+			_ = tempFile.Close()
+			return "", fmt.Errorf("failed to preserve image file permissions for %s: %w", fullPath, err)
+		}
+	}
+	if err := tempFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close image file %s: %w", fullPath, err)
+	}
+	if err := os.Rename(tempPath, fullPath); err != nil {
+		return "", fmt.Errorf("failed to finalize image file %s: %w", fullPath, err)
 	}
 
 	return filename, nil
+}
+
+func createImageTempFile(directory string) (*os.File, error) {
+	const maxAttempts = 100
+
+	for range maxAttempts {
+		var randomBytes [16]byte
+		if _, err := rand.Read(randomBytes[:]); err != nil {
+			return nil, fmt.Errorf("generate random suffix: %w", err)
+		}
+
+		path := filepath.Join(directory, ".gic-image-"+hex.EncodeToString(randomBytes[:]))
+		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o666)
+		if err == nil {
+			return file, nil
+		}
+		if !os.IsExist(err) {
+			return nil, err
+		}
+	}
+
+	return nil, fmt.Errorf("could not create a unique temporary file")
 }
 
 func resolveImageFilename(conf config.Config, image *Image, datetime time.Time) string {

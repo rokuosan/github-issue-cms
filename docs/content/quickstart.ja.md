@@ -56,6 +56,10 @@ output:
 $ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>"
 ```
 
+{{% callout type="warning" %}}
+プライベートリポジトリで、ドラッグ&ドロップで添付した画像（`https://github.com/user-attachments/assets/...`）を利用している場合は、**Classic** な Personal Access Token を使用してください。Fine-grained PAT や GitHub App のインストールトークン（GitHub Actions が提供する `GITHUB_TOKEN` を含む）は GitHub の添付ファイルダウンロードエンドポイントで受け付けられず、画像のダウンロードが 404 で失敗します。
+{{% /callout %}}
+
 もし、Issueに添付画像がある場合は以下のように出力されます。
 
 ```shell

@@ -146,6 +146,28 @@ func TestInitCommand_ShortFlags(t *testing.T) {
 	assert.Contains(t, content, "shortrepo")
 }
 
+func TestInitCommand_RefusesToOverwriteExistingConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+	require.NoError(t, os.Chdir(tempDir))
+
+	configPath := filepath.Join(tempDir, config.ConfigFileName+"."+config.ConfigFileType)
+	original := "github:\n  username: existing\n"
+	require.NoError(t, os.WriteFile(configPath, []byte(original), 0o644))
+
+	cmd := NewInitCommand()
+	cmd.SetArgs([]string{})
+	err = cmd.Execute()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already exists")
+	data, readErr := os.ReadFile(configPath)
+	require.NoError(t, readErr)
+	assert.Equal(t, original, string(data))
+}
+
 func TestInitCommand_Examples(t *testing.T) {
 	cmd := NewInitCommand()
 
