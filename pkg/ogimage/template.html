@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px;
+    height: 630px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    width: 1120px;
+    height: 550px;
+    padding: 50px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .title {
+    font-size: 52px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.3;
+    letter-spacing: -0.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    font-size: 22px;
+    color: #a0aec0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .meta-icon {
+    width: 20px;
+    height: 20px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+  }
+  .divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255,255,255,0.2);
+  }
+  .bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .tags {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 18px;
+    color: #e2e8f0;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 6px 18px;
+    white-space: nowrap;
+  }
+  .author {
+    font-size: 20px;
+    color: #718096;
+    text-align: right;
+  }
+  .brand {
+    font-size: 16px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">GITHUB ISSUE CMS</div>
+    <h1 class="title">{{ .Title }}</h1>
+    <div class="meta">
+      {{ if .Author }}
+      <div class="meta-item">
+        <span>✎</span>
+        <span>{{ .Author }}</span>
+      </div>
+      <div class="divider"></div>
+      {{ end }}
+      {{ if .Date }}
+      <div class="meta-item">
+        <span>🕐</span>
+        <span>{{ .Date }}</span>
+      </div>
+      <div class="divider"></div>
+      {{ end }}
+      {{ if .Category }}
+      <div class="meta-item">
+        <span>📂</span>
+        <span>{{ .Category }}</span>
+      </div>
+      {{ end }}
+    </div>
+    <div class="bottom">
+      <div class="tags">
+        {{ range .Tags }}
+        <span class="tag">{{ . }}</span>
+        {{ end }}
+      </div>
+      {{ if .Author }}
+      <div class="author">by {{ .Author }}</div>
+      {{ end }}
+    </div>
+  </div>
+</body>
+</html>
