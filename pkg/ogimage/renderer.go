@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"fmt"
 	"html/template"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,9 +83,10 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 
 	pageURL := "about:blank"
 	if r.tmplDir != "" {
-		// Use a file:// URL based on the template directory so relative
-		// asset references (e.g. <img src="logo.png">) resolve correctly.
-		pageURL = "file:///" + filepath.ToSlash(r.tmplDir) + "/"
+		// Use a properly escaped file:// URL so relative asset references
+		// resolve correctly even when the path contains # or ?.
+		u := &url.URL{Scheme: "file", Path: filepath.ToSlash(r.tmplDir) + "/"}
+		pageURL = u.String()
 	}
 
 	page, err := browser.Page(proto.TargetCreateTarget{URL: pageURL})
