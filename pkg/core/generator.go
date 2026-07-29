@@ -123,7 +123,10 @@ func (g *ArticleGenerator) Generate(ctx context.Context, username, repository st
 		}
 		if g.onArticleSaved != nil {
 			if err := g.onArticleSaved(article); err != nil {
-				g.logger.Warn("Post-save hook failed for article", "issue", issue.GetNumber(), "error", err)
+				// Log at Error level: the CLI's default verbosity filters
+				// out Warn, which would make hook failures (e.g. OGP image
+				// generation) completely invisible in a normal run.
+				g.logger.Error("Post-save hook failed for article", "issue", issue.GetNumber(), "error", err)
 			}
 		}
 		successCount++

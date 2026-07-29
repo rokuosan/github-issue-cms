@@ -60,7 +60,7 @@ func TestGenerateCommand_Examples(t *testing.T) {
 }
 
 func TestResolveOGPArticlePath(t *testing.T) {
-	t.Run("uses article key as subdirectory", func(t *testing.T) {
+	t.Run("flat layout places OGP adjacent to markdown with swapped extension", func(t *testing.T) {
 		conf := testConfig(t.TempDir() + "/articles")
 		article := &core.Article{
 			Date: "2024-01-15T10:30:00Z",
@@ -69,19 +69,35 @@ func TestResolveOGPArticlePath(t *testing.T) {
 
 		path, err := resolveOGPArticlePath(conf, article)
 		require.NoError(t, err)
-		assert.Contains(t, path, "ogp.jpeg")
-		assert.Contains(t, path, "2024-01-15_103000")
+		// Markdown is saved as content/posts/2024-01-15_103000.md, so the
+		// OGP image must be the adjacent file 2024-01-15_103000.ogp.jpeg —
+		// not an orphaned content/posts/<key>/ogp.jpeg subdirectory.
+		assert.Equal(t, "content/posts/2024-01-15_103000.ogp.jpeg", path)
 	})
 
-	t.Run("falls back to datetime when key is empty", func(t *testing.T) {
+	t.Run("page bundle layout places ogp.jpeg in the bundle directory", func(t *testing.T) {
 		conf := testConfig(t.TempDir() + "/articles")
+		conf.Output.Articles.Filename = "index.md"
 		article := &core.Article{
 			Date: "2024-01-15T10:30:00Z",
+			Key:  "2024-01-15_103000",
 		}
 
 		path, err := resolveOGPArticlePath(conf, article)
 		require.NoError(t, err)
-		assert.Contains(t, path, "ogp.jpeg")
+		assert.Equal(t, "content/posts/ogp.jpeg", path)
+	})
+
+	t.Run("flat layout uses datetime from date, not the article key", func(t *testing.T) {
+		conf := testConfig(t.TempDir() + "/articles")
+		article := &core.Article{
+			Date: "2024-01-15T10:30:00Z",
+			Key:  "some-other-key",
+		}
+
+		path, err := resolveOGPArticlePath(conf, article)
+		require.NoError(t, err)
+		assert.Equal(t, "content/posts/2024-01-15_103000.ogp.jpeg", path)
 	})
 
 	t.Run("nil article returns error", func(t *testing.T) {

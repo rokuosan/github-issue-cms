@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/rokuosan/github-issue-cms/pkg/config"
@@ -101,7 +102,14 @@ func runGenerate(cmd *cobra.Command, githubToken string, withOGImage bool) error
 	}
 
 	if withOGImage {
-		slog.Info(fmt.Sprintf("Complete: %d articles generated, %d OGP images (%d failed)", count, ogpOK, ogpFail))
+		summary := fmt.Sprintf("Complete: %d articles generated, %d OGP images (%d failed)", count, ogpOK, ogpFail)
+		if ogpFail > 0 {
+			// Log at Error level so the failure summary is visible even at
+			// the default verbosity (the root logger threshold is Error).
+			slog.Error(summary)
+		} else {
+			slog.Info(summary)
+		}
 	} else {
 		slog.Info(fmt.Sprintf("Complete: %d articles generated", count))
 	}
@@ -131,7 +139,7 @@ func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogi
 		return fmt.Errorf("render OGP: %w", err)
 	}
 
-	outputPath, err := resolveOGPArticlePath(conf, article)
+	outputPath, err := resolveOGPArticlePath(conf, rendered)
 	if err != nil {
 		return fmt.Errorf("resolve OGP path: %w", err)
 	}
@@ -172,16 +180,17 @@ func resolveOGPArticlePath(conf config.Config, article *core.Article) (string, e
 
 	// If the article is saved as a page bundle (index.md), the directory
 	// already uniquely identifies the article — place ogp.jpeg there.
-	// Otherwise, use the article's Key as a subdirectory to avoid overwrites
-	// when multiple articles share the same output directory.
+	// Otherwise (flat layout), save the OGP image as a unique file adjacent
+	// to the markdown file by swapping the extension: e.g. with filename
+	// "%Y-%m-%d_%H%M%S.md" the markdown is saved as "2024-01-15_103000.md"
+	// and the OGP image as "2024-01-15_103000.ogp.jpeg" in the same
+	// directory. Placing it in a "<key>/ogp.jpeg" subdirectory would orphan
+	// the image, since that directory is not a Hugo page bundle.
 	articleFilename := config.CompileTimeTemplate(datetime, conf.Output.Articles.Filename)
 	if articleFilename == "index.md" {
 		return filepath.Clean(filepath.Join(articleDir, "ogp.jpeg")), nil
 	}
 
-	key := article.Key
-	if key == "" {
-		key = datetime.Format("2006-01-02_150405")
-	}
-	return filepath.Clean(filepath.Join(articleDir, key, "ogp.jpeg")), nil
+	ogpName := strings.TrimSuffix(articleFilename, filepath.Ext(articleFilename)) + ".ogp.jpeg"
+	return filepath.Clean(filepath.Join(articleDir, ogpName)), nil
 }
