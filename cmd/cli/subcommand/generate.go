@@ -109,7 +109,7 @@ func runGenerate(cmd *cobra.Command, githubToken string, withOGImage bool) error
 }
 
 // generateOGPForArticle renders an OGP image for the given article and saves
-// it in a unique subdirectory derived from the article's Key.
+// it alongside the article markdown file.
 func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogimage.Renderer, article *core.Article) error {
 	if article == nil {
 		return fmt.Errorf("article is nil")
@@ -120,7 +120,11 @@ func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogi
 		return fmt.Errorf("context cancelled before OGP render: %w", err)
 	}
 
-	data := articleToOGPData(article)
+	// Apply frontmatter overrides so the OGP image reflects the final
+	// rendered values, not the original GitHub issue metadata.
+	rendered := article.Clone()
+	core.ApplyFrontMatterOverrides(rendered, rendered.FrontMatter.Values())
+	data := articleToOGPData(rendered)
 
 	jpeg, err := renderer.Render(cmd.Context(), data)
 	if err != nil {
@@ -145,8 +149,8 @@ func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogi
 }
 
 // resolveOGPArticlePath returns the path where the OGP image should be saved
-// for an article. It places "ogp.jpeg" in a subdirectory keyed by the
-// article's unique Key (datetime), avoiding overwrites between articles.
+// for an article. It reconstructs the article's save directory to place
+// ogp.jpeg alongside the markdown file.
 func resolveOGPArticlePath(conf config.Config, article *core.Article) (string, error) {
 	if article == nil {
 		return "", fmt.Errorf("article is nil")
@@ -166,13 +170,18 @@ func resolveOGPArticlePath(conf config.Config, article *core.Article) (string, e
 	}
 	articleDir = config.CompileTimeTemplate(datetime, articleDir)
 
-	// Use the article's Key (unique datetime string) as a subdirectory
-	// to ensure each article gets its own ogp.jpeg without overwrites.
-	// Fall back to the formatted datetime if Key is empty.
+	// If the article is saved as a page bundle (index.md), the directory
+	// already uniquely identifies the article — place ogp.jpeg there.
+	// Otherwise, use the article's Key as a subdirectory to avoid overwrites
+	// when multiple articles share the same output directory.
+	articleFilename := config.CompileTimeTemplate(datetime, conf.Output.Articles.Filename)
+	if articleFilename == "index.md" {
+		return filepath.Clean(filepath.Join(articleDir, "ogp.jpeg")), nil
+	}
+
 	key := article.Key
 	if key == "" {
 		key = datetime.Format("2006-01-02_150405")
 	}
-
 	return filepath.Clean(filepath.Join(articleDir, key, "ogp.jpeg")), nil
 }
