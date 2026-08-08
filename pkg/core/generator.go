@@ -128,6 +128,9 @@ func (g *ArticleGenerator) Generate(ctx context.Context, username, repository st
 				// generation) completely invisible in a normal run.
 				g.logger.Error("Post-save hook failed for article", "issue", issue.GetNumber(), "error", err)
 			}
+			if err := ctx.Err(); err != nil {
+				return successCount, err
+			}
 		}
 		successCount++
 	}

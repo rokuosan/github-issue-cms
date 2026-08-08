@@ -226,6 +226,34 @@ func TestArticleGenerator_Generate(t *testing.T) {
 	assertEqualCmp(t, 1, count)
 }
 
+func TestArticleGenerator_Generate_ReturnsContextErrorWhenHookCancels(t *testing.T) {
+	conf := *config.NewConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gen := &ArticleGenerator{
+		issueRepo: &stubIssueStore{issues: []*github.Issue{{
+			Number:    github.Ptr(1),
+			Title:     Ptr("Issue 1"),
+			Body:      Ptr("Body 1"),
+			CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
+			User:      &github.User{Login: Ptr("user")},
+			State:     Ptr("closed"),
+		}}},
+		articleRepo: stubArticleStore{},
+		service:     NewArticleService(conf),
+		config:      conf,
+		logger:      slog.Default(),
+	}
+	gen.SetOnArticleSaved(func(*Article) error {
+		cancel()
+		return context.Canceled
+	})
+
+	_, err := gen.Generate(ctx, "testuser", "testrepo")
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
 func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 	conf := *config.NewConfig()
 	service := NewArticleService(conf)
