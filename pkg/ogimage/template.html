@@ -3,128 +3,88 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { box-sizing: border-box; }
+
   body {
     width: 1200px;
     height: 630px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 0;
+    padding: 48px;
+    background: #f7f7f7;
+    color: #171717;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+
   .card {
-    width: 1120px;
-    height: 550px;
-    padding: 50px 60px;
+    width: 1104px;
+    height: 534px;
+    padding: 56px 64px 48px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px #e6e6e6;
   }
+
   .title {
-    font-size: 52px;
-    font-weight: 800;
-    color: #ffffff;
-    line-height: 1.3;
-    letter-spacing: -0.5px;
+    max-width: 920px;
+    margin: 0;
+    font-size: 58px;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.045em;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
   }
-  .meta {
+
+  .footer {
     display: flex;
-    align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  .meta-item {
-    font-size: 22px;
-    color: #a0aec0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .meta-icon {
-    width: 20px;
-    height: 20px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 50%;
-  }
-  .divider {
-    width: 1px;
-    height: 24px;
-    background: rgba(255,255,255,0.2);
-  }
-  .bottom {
-    display: flex;
-    justify-content: space-between;
     align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding-top: 22px;
+    border-top: 1px solid #e6e6e6;
   }
+
+  .meta,
   .tags {
     display: flex;
-    gap: 12px;
     flex-wrap: wrap;
-  }
-  .tag {
+    gap: 8px 18px;
     font-size: 18px;
-    color: #e2e8f0;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 20px;
-    padding: 6px 18px;
-    white-space: nowrap;
+    line-height: 1.4;
+    color: #666666;
   }
-  .author {
-    font-size: 20px;
-    color: #718096;
-    text-align: right;
-  }
-  .brand {
+
+  .tags {
+    justify-content: flex-end;
     font-size: 16px;
-    color: rgba(255,255,255,0.3);
-    text-transform: uppercase;
-    letter-spacing: 2px;
+  }
+
+  .tags span::before {
+    content: "#";
+    color: #999999;
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="brand">GITHUB ISSUE CMS</div>
+  <main class="card">
     <h1 class="title">{{ .Title }}</h1>
-    <div class="meta">
-      {{ if .Author }}
-      <div class="meta-item">
-        <span>✎</span>
-        <span>{{ .Author }}</span>
+    <footer class="footer">
+      <div class="meta">
+        {{ if .Author }}<span>{{ .Author }}</span>{{ end }}
+        {{ if .Date }}<span>{{ .Date }}</span>{{ end }}
+        {{ if .Category }}<span>{{ .Category }}</span>{{ end }}
       </div>
-      <div class="divider"></div>
-      {{ end }}
-      {{ if .Date }}
-      <div class="meta-item">
-        <span>🕐</span>
-        <span>{{ .Date }}</span>
-      </div>
-      <div class="divider"></div>
-      {{ end }}
-      {{ if .Category }}
-      <div class="meta-item">
-        <span>📂</span>
-        <span>{{ .Category }}</span>
-      </div>
-      {{ end }}
-    </div>
-    <div class="bottom">
+      {{ if .Tags }}
       <div class="tags">
-        {{ range .Tags }}
-        <span class="tag">{{ . }}</span>
-        {{ end }}
+        {{ range .Tags }}<span>{{ . }}</span>{{ end }}
       </div>
-      {{ if .Author }}
-      <div class="author">by {{ .Author }}</div>
       {{ end }}
-    </div>
-  </div>
+    </footer>
+  </main>
 </body>
 </html>
