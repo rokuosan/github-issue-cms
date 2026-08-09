@@ -45,3 +45,8 @@ jobs:
           go-version-file: go.mod
       - name: test
         run: go test -v ./...
+      - name: OGP render integration test
+        env:
+          GIC_CHROMIUM_BIN: /usr/bin/google-chrome
+          GIC_INTEGRATION_TEST: "1"
+        run: go test -v ./pkg/ogimage -run '^TestRenderIntegration$'
