@@ -125,11 +125,13 @@ func TestResolveChromiumBin(t *testing.T) {
 	})
 
 	t.Run("falls back to browserBin", func(t *testing.T) {
+		t.Setenv("GIC_CHROMIUM_BIN", "")
 		r := &Renderer{browserBin: "/usr/bin/chrome"}
 		assert.Equal(t, "/usr/bin/chrome", r.resolveChromiumBin())
 	})
 
 	t.Run("empty when neither is set", func(t *testing.T) {
+		t.Setenv("GIC_CHROMIUM_BIN", "")
 		r := &Renderer{}
 		assert.Equal(t, "", r.resolveChromiumBin())
 	})

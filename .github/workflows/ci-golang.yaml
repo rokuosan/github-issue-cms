@@ -44,4 +44,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: test
+        env:
+          GIC_CHROMIUM_BIN: /usr/bin/google-chrome
+          GIC_INTEGRATION_TEST: "1"
         run: go test -v ./...
