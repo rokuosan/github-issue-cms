@@ -82,7 +82,12 @@ func runGenerate(cmd *cobra.Command, githubToken string, withOGImage bool) error
 		if err != nil {
 			return fmt.Errorf("failed to create OGP renderer: %w", err)
 		}
+		defer renderer.Close()
 		generator.SetOnArticleSaved(func(article *core.Article) error {
+			if err := renderer.Open(cmd.Context()); err != nil {
+				ogpFail++
+				return fmt.Errorf("open OGP renderer: %w", err)
+			}
 			err := generateOGPForArticle(cmd, conf, renderer, article)
 			if err != nil {
 				ogpFail++

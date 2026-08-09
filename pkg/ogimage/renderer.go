@@ -29,6 +29,7 @@ type Renderer struct {
 	tmpl       *template.Template
 	browserBin string
 	tmplDir    string // directory of custom template (empty for embedded)
+	browser    *rod.Browser
 }
 
 // NewRenderer creates a Renderer using the embedded default template.
@@ -62,8 +63,32 @@ func NewRendererWithTemplate(tmplPath string, browserBin string) (*Renderer, err
 	}, nil
 }
 
+// Open starts a browser that subsequent Render calls reuse. Call Close when the
+// renderer is no longer needed. Render without Open remains self-contained.
+func (r *Renderer) Open(ctx context.Context) error {
+	if r.browser != nil {
+		return nil
+	}
+
+	browser, err := r.launchBrowser(ctx)
+	if err != nil {
+		return fmt.Errorf("ogimage: open browser: %w", err)
+	}
+	r.browser = browser
+	return nil
+}
+
+// Close closes a browser opened with Open. It is safe to call more than once.
+func (r *Renderer) Close() {
+	if r.browser == nil {
+		return
+	}
+	closeBrowser(r.browser)
+	r.browser = nil
+}
+
 // Render executes the template with the given data, opens a headless browser
-// page, and captures a 1200×630 JPEG screenshot.
+// when Open has not been called, and captures a 1200×630 JPEG screenshot.
 func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	// Check context before launching expensive browser process.
 	if err := ctx.Err(); err != nil {
@@ -75,11 +100,15 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 		return nil, err
 	}
 
-	browser, err := r.launchBrowser(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("ogimage: launch browser: %w", err)
+	browser := r.browser
+	temporaryBrowser := browser == nil
+	if temporaryBrowser {
+		browser, err = r.launchBrowser(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("ogimage: launch browser: %w", err)
+		}
+		defer closeBrowser(browser)
 	}
-	defer closeBrowser(browser)
 
 	pageURL := "about:blank"
 	if r.tmplDir != "" {

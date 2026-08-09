@@ -157,6 +157,9 @@ func TestRenderIntegration(t *testing.T) {
 
 	r, err := NewRenderer("")
 	require.NoError(t, err)
+	require.NoError(t, r.Open(t.Context()))
+	t.Cleanup(r.Close)
+	browser := r.browser
 
 	data := OGPData{
 		Title:    "Integration Test Article",
@@ -166,12 +169,15 @@ func TestRenderIntegration(t *testing.T) {
 		Tags:     []string{"go", "integration"},
 	}
 
-	jpeg, err := r.Render(t.Context(), data)
-	require.NoError(t, err)
-	require.NotEmpty(t, jpeg)
+	for range 2 {
+		jpeg, err := r.Render(t.Context(), data)
+		require.NoError(t, err)
+		require.NotEmpty(t, jpeg)
 
-	// JPEG files start with FF D8 FF.
-	assert.Equal(t, byte(0xFF), jpeg[0])
-	assert.Equal(t, byte(0xD8), jpeg[1])
-	assert.Equal(t, byte(0xFF), jpeg[2])
+		// JPEG files start with FF D8 FF.
+		assert.Equal(t, byte(0xFF), jpeg[0])
+		assert.Equal(t, byte(0xD8), jpeg[1])
+		assert.Equal(t, byte(0xFF), jpeg[2])
+		assert.Same(t, browser, r.browser)
+	}
 }
