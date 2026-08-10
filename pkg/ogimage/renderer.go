@@ -124,7 +124,7 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 	}
 	defer closePage(page)
 
-	// Enforce a per-page timeout so WaitStable and Screenshot cannot hang
+	// Enforce a per-page timeout so render waits and Screenshot cannot hang
 	// indefinitely even if the caller's context has no deadline.
 	page = page.Timeout(30 * time.Second)
 
@@ -141,8 +141,19 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 		return nil, fmt.Errorf("ogimage: set content: %w", err)
 	}
 
-	if err := page.WaitStable(1 * time.Second); err != nil {
-		return nil, fmt.Errorf("ogimage: wait stable: %w", err)
+	if err := page.WaitLoad(); err != nil {
+		return nil, fmt.Errorf("ogimage: wait load: %w", err)
+	}
+
+	if _, err := page.Evaluate(rod.Eval(`() => document.fonts.ready`).ByPromise()); err != nil {
+		return nil, fmt.Errorf("ogimage: wait fonts: %w", err)
+	}
+
+	// Evaluate directly so the page timeout also covers requestAnimationFrame.
+	// Rod's WaitRepaint uses the original page root, which is not timeout-aware
+	// after page.Timeout returns a clone.
+	if _, err := page.Eval(`() => new Promise(resolve => requestAnimationFrame(resolve))`); err != nil {
+		return nil, fmt.Errorf("ogimage: wait repaint: %w", err)
 	}
 
 	quality := 90
