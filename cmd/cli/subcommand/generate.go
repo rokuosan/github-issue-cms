@@ -137,7 +137,7 @@ func generateOGPForArticle(cmd *cobra.Command, conf config.Config, renderer *ogi
 	// rendered values, not the original GitHub issue metadata.
 	rendered := article.Clone()
 	core.ApplyFrontMatterOverrides(rendered, rendered.FrontMatter.Values())
-	data := articleToOGPData(rendered)
+	data := articleToOGPData(rendered, conf)
 
 	jpeg, err := renderer.Render(cmd.Context(), data)
 	if err != nil {

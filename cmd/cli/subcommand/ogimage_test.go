@@ -68,16 +68,19 @@ func TestArticleToOGPData(t *testing.T) {
 		Author:   "alice",
 		Date:     "2024-01-15T10:30:00Z",
 		Category: "tech",
-		Tags:     []string{"go", "testing"},
+		Tags:     []string{"published", "go", "testing"},
 	}
 
-	data := articleToOGPData(article)
+	conf := *config.NewConfig()
+	conf.GitHub.Labels = []string{"published"}
+	data := articleToOGPData(article, conf)
 
 	assert.Equal(t, "Test Title", data.Title)
 	assert.Equal(t, "alice", data.Author)
 	assert.Equal(t, "2024-01-15", data.Date) // Formatted
 	assert.Equal(t, "tech", data.Category)
 	assert.Equal(t, []string{"go", "testing"}, data.Tags)
+	assert.Equal(t, []string{"published", "go", "testing"}, article.Tags)
 }
 
 func TestArticleToOGPData_EmptyFields(t *testing.T) {
@@ -85,7 +88,7 @@ func TestArticleToOGPData_EmptyFields(t *testing.T) {
 		Title: "Only Title",
 	}
 
-	data := articleToOGPData(article)
+	data := articleToOGPData(article, *config.NewConfig())
 
 	assert.Equal(t, "Only Title", data.Title)
 	assert.Equal(t, "", data.Author)
@@ -172,7 +175,7 @@ This is the article body.`
 	assert.Equal(t, "testuser", article.Author)
 
 	// Convert to OGPData.
-	data := articleToOGPData(article)
+	data := articleToOGPData(article, *config.NewConfig())
 	assert.Equal(t, "Integration Test", data.Title)
 
 	// Render using the ogimage package (requires Chromium).

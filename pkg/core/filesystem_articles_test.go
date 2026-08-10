@@ -218,6 +218,28 @@ func TestFileSystemArticleRepository_Save_RewritesImageURLs(t *testing.T) {
 	}
 }
 
+func TestFileSystemArticleRepository_Save_FiltersIssueSelectionLabelsFromFrontMatterTags(t *testing.T) {
+	tempDir := t.TempDir()
+	conf := *config.NewConfig()
+	conf.GitHub.Labels = []string{"published"}
+	conf.Output.Articles.Directory = tempDir
+	conf.Output.Articles.Filename = "article.md"
+
+	repo := &FileSystemArticleRepository{renderer: NewHugoArticleRenderer()}
+	article := &Article{
+		Title:       "Title",
+		Date:        "2021-01-01T00:00:00Z",
+		Tags:        []string{"published"},
+		FrontMatter: NewFrontMatter(map[string]any{"tags": []string{"published", "go"}}),
+	}
+
+	require.NoError(t, repo.Save(context.Background(), article, conf))
+	data, err := os.ReadFile(filepath.Join(tempDir, "article.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "go")
+	assert.NotContains(t, string(data), "published")
+}
+
 func TestFileSystemArticleRepository_Save_UsesFrontMatterDateForOutputPaths(t *testing.T) {
 	tempDir := t.TempDir()
 
