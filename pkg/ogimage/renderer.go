@@ -149,7 +149,10 @@ func (r *Renderer) Render(ctx context.Context, data OGPData) ([]byte, error) {
 		return nil, fmt.Errorf("ogimage: wait fonts: %w", err)
 	}
 
-	if err := page.WaitRepaint(); err != nil {
+	// Evaluate directly so the page timeout also covers requestAnimationFrame.
+	// Rod's WaitRepaint uses the original page root, which is not timeout-aware
+	// after page.Timeout returns a clone.
+	if _, err := page.Eval(`() => new Promise(resolve => requestAnimationFrame(resolve))`); err != nil {
 		return nil, fmt.Errorf("ogimage: wait repaint: %w", err)
 	}
 
