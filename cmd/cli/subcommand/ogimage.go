@@ -37,7 +37,10 @@ Examples:
   github-issue-cms ogimage -f content/posts/2024-01-15_103000.md
 
   # Use a custom template
-  github-issue-cms ogimage -f article.md -t custom-ogp.html`,
+  github-issue-cms ogimage -f article.md -t custom-ogp.html
+
+  # Preview a template while editing it
+  github-issue-cms ogimage preview ogp.html`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runOGCImage(cmd, markdownFile, templateFile)
@@ -47,6 +50,7 @@ Examples:
 	cmd.Flags().StringVarP(&markdownFile, "file", "f", "", "Path to the markdown file (required)")
 	cmd.Flags().StringVarP(&templateFile, "template", "t", "", "Path to a custom OGP HTML template (optional)")
 	_ = cmd.MarkFlagRequired("file")
+	cmd.AddCommand(NewOGImagePreviewCommand())
 
 	return cmd
 }

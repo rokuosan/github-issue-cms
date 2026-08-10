@@ -52,6 +52,18 @@ $ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
 > [!NOTE]
 > If your issues have images attached via drag-and-drop (`https://github.com/user-attachments/assets/...`) in a **private** repository, use a **classic** Personal Access Token. Fine-grained PATs and GitHub App installation tokens (including the Actions-provided `GITHUB_TOKEN`) are not accepted by GitHub's attachment download endpoint and will cause image downloads to fail with a 404.
 
+### Preview an OGP template
+
+Use the live preview server while editing a custom OGP template:
+
+```bash
+$ github-issue-cms ogimage preview ogp.html
+```
+
+Open `http://localhost:6140`. The template is rendered with sample article
+data in a fixed 1200x630 OGP viewport and reloads automatically when the file
+changes. Relative assets are served from the template's directory.
+
 If your repository has issues and attached images, they will be exported like this tree.
 
 These output paths are configurable, so you can adapt them to your site or build pipeline.

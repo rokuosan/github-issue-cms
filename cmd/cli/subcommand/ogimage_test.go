@@ -44,6 +44,9 @@ func TestNewOGCImageCommand(t *testing.T) {
 	tmplFlag := cmd.Flags().Lookup("template")
 	assert.NotNil(t, tmplFlag)
 	assert.Equal(t, "t", tmplFlag.Shorthand)
+
+	assert.NotNil(t, cmd.Commands())
+	assert.Equal(t, "preview <template>", cmd.Commands()[0].Use)
 }
 
 func TestOGCImageCommand_MissingFile(t *testing.T) {
