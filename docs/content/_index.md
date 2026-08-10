@@ -11,6 +11,7 @@ cascade:
 
 {{<cards>}}
     {{<card link="quickstart" icon="globe" title="Quick Start">}}
+    {{<card link="ogp-images" icon="image" title="OGP Images">}}
 {{</cards>}}
 
 ## {{<icon "chip">}} Configuration
@@ -19,4 +20,3 @@ cascade:
   {{<card link="configuration/parameters" title="gic.config.yaml reference" icon="code" >}}
   {{<card link="configuration/github-actions-integration" title="CI with GitHub Actions" icon="code" >}}
 {{</cards>}}
-

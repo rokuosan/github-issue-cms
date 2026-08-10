@@ -52,7 +52,28 @@ $ github-issue-cms generate --token="YOUR_GITHUB_TOKEN"
 > [!NOTE]
 > If your issues have images attached via drag-and-drop (`https://github.com/user-attachments/assets/...`) in a **private** repository, use a **classic** Personal Access Token. Fine-grained PATs and GitHub App installation tokens (including the Actions-provided `GITHUB_TOKEN`) are not accepted by GitHub's attachment download endpoint and will cause image downloads to fail with a 404.
 
-### Preview an OGP template
+### Generate OGP images
+
+Generate a 1200x630 JPEG for every generated article:
+
+```bash
+$ github-issue-cms generate --token="YOUR_GITHUB_TOKEN" --with-ogimage
+```
+
+Images are saved next to their Markdown article. A page bundle receives
+`ogp.jpeg`; a flat Markdown file such as `post.md` receives `post.ogp.jpeg`.
+
+To generate an image for one local article, use `ogimage`:
+
+```bash
+$ github-issue-cms ogimage --file content/posts/2024-01-15_103000.md
+```
+
+This command writes `ogp.jpeg` to the configured image output directory.
+Both commands render HTML in headless Chromium. Chromium is downloaded
+automatically when needed, or set `GIC_CHROMIUM_BIN` to an installed browser.
+
+### Preview an OGP template in a browser
 
 Use the live preview server while editing a custom OGP template:
 
@@ -60,9 +81,16 @@ Use the live preview server while editing a custom OGP template:
 $ github-issue-cms ogimage preview ogp.html
 ```
 
-Open `http://localhost:6140`. The template is rendered with sample article
-data in a fixed 1200x630 OGP viewport and reloads automatically when the file
-changes. Relative assets are served from the template's directory.
+Open `http://localhost:6140` in a browser. The template is rendered with
+sample article data in a fixed 1200x630 OGP viewport and reloads automatically
+when the file changes. Relative assets are served from the template's
+directory. Use `--port` or `--host` to change the server address.
+
+Pass the template to `ogimage` to generate an image with it:
+
+```bash
+$ github-issue-cms ogimage --file article.md --template ogp.html
+```
 
 If your repository has issues and attached images, they will be exported like this tree.
 
