@@ -66,7 +66,7 @@ func runOGCImage(cmd *cobra.Command, markdownFile, templateFile string) error {
 	}
 
 	// Convert Article to OGPData.
-	data := articleToOGPData(article)
+	data := articleToOGPData(article, conf)
 
 	// Create renderer.
 	var renderer *ogimage.Renderer
@@ -108,10 +108,12 @@ func runOGCImage(cmd *cobra.Command, markdownFile, templateFile string) error {
 
 // articleToOGPData converts a core.Article to ogimage.OGPData.
 // Returns zero-value OGPData if article is nil.
-func articleToOGPData(article *core.Article) ogimage.OGPData {
+func articleToOGPData(article *core.Article, conf config.Config) ogimage.OGPData {
 	if article == nil {
 		return ogimage.OGPData{}
 	}
+	article = article.Clone()
+	core.FilterArticleTags(article, conf)
 	return ogimage.OGPData{
 		Title:    article.Title,
 		Author:   article.Author,
