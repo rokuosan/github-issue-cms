@@ -1,6 +1,6 @@
 module github.com/rokuosan/github-issue-cms
 
-go 1.25.0
+go 1.26.0
 
 toolchain go1.26.5
 
@@ -8,6 +8,7 @@ require (
 	github.com/go-rod/rod v0.116.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v86 v86.0.0
+	github.com/google/go-github/v91 v91.0.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
