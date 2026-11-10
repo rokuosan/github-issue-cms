@@ -5,17 +5,17 @@
   ],
   "packageRules": [
     {
+      "description": "Group all Go version updates (go.mod, Dockerfile golang, mise.toml) into a single PR",
+      "groupName": "Go version",
+      "groupSlug": "go-version",
+      "matchPackageNames": ["go", "golang"],
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
       "description": "Group all GitHub Actions updates",
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["digest", "minor", "pin", "patch"]
-    },
-    {
-      "description": "Group mise tool updates",
-      "groupName": "tool definitions",
-      "groupSlug": "tool-defs",
-      "matchManagers": ["mise"],
       "matchUpdateTypes": ["digest", "minor", "pin", "patch"]
     }
   ]
