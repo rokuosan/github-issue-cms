@@ -2,5 +2,21 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Group all GitHub Actions updates",
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["digest", "minor", "pin", "patch"]
+    },
+    {
+      "description": "Group mise tool updates",
+      "groupName": "tool definitions",
+      "groupSlug": "tool-defs",
+      "matchManagers": ["mise"],
+      "matchUpdateTypes": ["digest", "minor", "pin", "patch"]
+    }
   ]
 }
