@@ -18,39 +18,22 @@ const maxRedirects = 10
 
 // HTTPImageRepository downloads images over HTTP.
 type HTTPImageRepository struct {
-	token        string
-	trustedHosts map[string]struct{}
-	logger       *slog.Logger
-	client       *http.Client
+	token  string
+	logger *slog.Logger
+	client *http.Client
 }
 
-// NewHTTPImageRepository creates a new HTTPImageRepository without trusted hosts.
+// NewHTTPImageRepository creates a new HTTPImageRepository.
 func NewHTTPImageRepository(token string) AssetFetcher {
-	return NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, nil, nil)
+	return NewHTTPImageRepositoryWithLogger(token, nil)
 }
 
-// NewHTTPImageRepositoryWithTrustedHosts creates a new HTTPImageRepository that only sends a token to trusted HTTPS hosts.
-func NewHTTPImageRepositoryWithTrustedHosts(token string, trustedHosts []string) *HTTPImageRepository {
-	return NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, trustedHosts, nil)
-}
-
-// NewHTTPImageRepositoryWithLogger creates a new HTTPImageRepository with an injected logger and no trusted hosts.
+// NewHTTPImageRepositoryWithLogger creates a new HTTPImageRepository with an injected logger.
 func NewHTTPImageRepositoryWithLogger(token string, logger *slog.Logger) AssetFetcher {
-	return NewHTTPImageRepositoryWithTrustedHostsAndLogger(token, nil, logger)
-}
-
-// NewHTTPImageRepositoryWithTrustedHostsAndLogger creates a new HTTPImageRepository with trusted hosts and an injected logger.
-func NewHTTPImageRepositoryWithTrustedHostsAndLogger(token string, trustedHosts []string, logger *slog.Logger) *HTTPImageRepository {
-	hosts := make(map[string]struct{}, len(trustedHosts))
-	for _, host := range trustedHosts {
-		hosts[strings.ToLower(host)] = struct{}{}
-	}
-
 	return &HTTPImageRepository{
-		token:        token,
-		trustedHosts: hosts,
-		logger:       defaultLogger(logger),
-		client:       &http.Client{Timeout: defaultHTTPTimeout * time.Second},
+		token:  token,
+		logger: defaultLogger(logger),
+		client: &http.Client{Timeout: defaultHTTPTimeout * time.Second},
 	}
 }
 
@@ -68,15 +51,15 @@ func (r *HTTPImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 }
 
 // downloadImage downloads an image over HTTP.
-func (r *HTTPImageRepository) downloadImage(ctx context.Context, url string) (io.ReadCloser, string, error) {
-	// A token is only sent to explicitly trusted HTTPS hosts.
-	if r.token != "" && r.isTrustedURL(url) {
-		if body, contentType, err := r.sendRequest(ctx, url, true); err == nil {
+func (r *HTTPImageRepository) downloadImage(ctx context.Context, imageURL string) (io.ReadCloser, string, error) {
+	// Only send the GitHub token to known GitHub image hosts over HTTPS.
+	if r.token != "" && isGitHubImageURL(imageURL) {
+		if body, contentType, err := r.sendRequest(ctx, imageURL, true); err == nil {
 			return body, contentType, nil
 		} else {
-			r.logger.Warn("authenticated image download failed; retrying without token", "url", url, "error", err)
+			r.logger.Warn("authenticated image download failed; retrying without token", "url", imageURL, "error", err)
 
-			body, contentType, fallbackErr := r.sendRequest(ctx, url, false)
+			body, contentType, fallbackErr := r.sendRequest(ctx, imageURL, false)
 			if fallbackErr == nil {
 				return body, contentType, nil
 			}
@@ -87,8 +70,8 @@ func (r *HTTPImageRepository) downloadImage(ctx context.Context, url string) (io
 		}
 	}
 
-	// No token was configured, so only an unauthenticated request is possible.
-	return r.sendRequest(ctx, url, false)
+	// No token is configured or the URL is not a known HTTPS GitHub image host.
+	return r.sendRequest(ctx, imageURL, false)
 }
 
 // sendRequest sends an HTTP request.
@@ -98,26 +81,11 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 		return nil, "", err
 	}
 
+	client := r.client
 	if includeToken && r.token != "" {
 		req.Header.Set("Authorization", "token "+r.token)
-	}
-
-	client := *r.client
-	if includeToken && r.token != "" {
-		previousCheckRedirect := client.CheckRedirect
-		client.CheckRedirect = func(redirectReq *http.Request, via []*http.Request) error {
-			redirectReq.Header.Del("Authorization")
-			if r.isTrustedURL(redirectReq.URL.String()) {
-				redirectReq.Header.Set("Authorization", "token "+r.token)
-			}
-			if len(via) >= maxRedirects {
-				return fmt.Errorf("stopped after %d redirects", maxRedirects)
-			}
-			if previousCheckRedirect != nil {
-				return previousCheckRedirect(redirectReq, via)
-			}
-			return nil
-		}
+		// Prevent the token from leaking to a redirect destination.
+		client = r.clientWithRedirectGuard()
 	}
 
 	resp, err := client.Do(req)
@@ -135,13 +103,36 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 	return resp.Body, contentType, nil
 }
 
-func (r *HTTPImageRepository) isTrustedURL(rawURL string) bool {
-	parsedURL, err := url.Parse(rawURL)
-	if err != nil || !strings.EqualFold(parsedURL.Scheme, "https") {
+// clientWithRedirectGuard returns a copy of the HTTP client that strips the
+// Authorization header unless the destination is a known GitHub image host
+// using HTTPS.
+func (r *HTTPImageRepository) clientWithRedirectGuard() *http.Client {
+	c := *r.client
+	c.CheckRedirect = func(redirectReq *http.Request, via []*http.Request) error {
+		redirectReq.Header.Del("Authorization")
+		if isGitHubImageURL(redirectReq.URL.String()) {
+			redirectReq.Header.Set("Authorization", "token "+r.token)
+		}
+		if len(via) >= maxRedirects {
+			return fmt.Errorf("stopped after %d redirects", maxRedirects)
+		}
+		return nil
+	}
+	return &c
+}
+
+// isGitHubImageURL is independent of the configurable image replacement targets.
+func isGitHubImageURL(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.User != nil {
 		return false
 	}
-	_, trusted := r.trustedHosts[strings.ToLower(parsedURL.Host)]
-	return trusted
+	switch strings.ToLower(parsed.Host) {
+	case "github.com", "user-images.githubusercontent.com", "private-user-images.githubusercontent.com":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeContentType(value string) string {

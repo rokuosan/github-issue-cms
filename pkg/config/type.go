@@ -26,23 +26,16 @@ type OutputArticlesConfig struct {
 }
 
 type OutputImagesConfig struct {
-	Directory    string   `yaml:"directory" mapstructure:"directory"`
-	Filename     string   `yaml:"filename" mapstructure:"filename"`
-	BaseURL      *string  `yaml:"url" mapstructure:"url"`
-	Targets      []string `yaml:"targets" mapstructure:"targets"`
-	TrustedHosts []string `yaml:"trusted_hosts" mapstructure:"trusted_hosts"`
+	Directory string   `yaml:"directory" mapstructure:"directory"`
+	Filename  string   `yaml:"filename" mapstructure:"filename"`
+	BaseURL   *string  `yaml:"url" mapstructure:"url"`
+	Targets   []string `yaml:"targets" mapstructure:"targets"`
 }
 
 var defaultImageTargets = []string{
 	"https://github.com/user-attachments/",
 	"https://user-images.githubusercontent.com/",
 	"https://private-user-images.githubusercontent.com/",
-}
-
-var defaultTrustedImageHosts = []string{
-	"github.com",
-	"user-images.githubusercontent.com",
-	"private-user-images.githubusercontent.com",
 }
 
 type HugoConfig struct {
@@ -116,10 +109,9 @@ func NewOutputArticlesConfig() *OutputArticlesConfig {
 func NewOutputImagesConfig() *OutputImagesConfig {
 	url := "/images/%Y-%m-%d_%H%M%S"
 	return &OutputImagesConfig{
-		Directory:    "static/images/%Y-%m-%d_%H%M%S",
-		Filename:     "[:id].png",
-		BaseURL:      &url,
-		TrustedHosts: append([]string(nil), defaultTrustedImageHosts...),
+		Directory: "static/images/%Y-%m-%d_%H%M%S",
+		Filename:  "[:id].png",
+		BaseURL:   &url,
 	}
 }
 
@@ -135,20 +127,6 @@ func (c *OutputImagesConfig) TargetURLs() []string {
 		return defaultImageTargets
 	}
 	return c.Targets
-}
-
-func (c *OutputImagesConfig) TrustedImageHosts() []string {
-	if c == nil || c.TrustedHosts == nil {
-		return defaultTrustedImageHosts
-	}
-	return c.TrustedHosts
-}
-
-func (c *Config) TrustedImageHosts() []string {
-	if c == nil || c.Output == nil {
-		return defaultTrustedImageHosts
-	}
-	return c.Output.Images.TrustedImageHosts()
 }
 
 func (c *Config) normalize() {
@@ -169,9 +147,6 @@ func (c *Config) normalize() {
 	}
 	if c.Output.Images == nil {
 		c.Output.Images = &OutputImagesConfig{}
-	}
-	if c.Output.Images.TrustedHosts == nil {
-		c.Output.Images.TrustedHosts = append([]string(nil), defaultTrustedImageHosts...)
 	}
 
 	if c.Hugo == nil {

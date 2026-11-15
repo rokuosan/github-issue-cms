@@ -57,6 +57,10 @@ GitHub の設定です。
 `targets: []` を指定した場合は、画像URLの検出も置換も行いません。
 `https://*.githubusercontent.com` のようなワイルドカード付きホスト指定も使えます。
 
+GitHub Token は HTTPS の `github.com`、`user-images.githubusercontent.com`、`private-user-images.githubusercontent.com` にのみ送信します（ポート指定のないホストの完全一致）。
+リダイレクト先にも同じ条件を適用します。
+`targets` にほかのホストを追加しても、そのホストには Token を送信しません。
+
 ``[:id]`` は画像の ID に置き換わります。画像の ID はそのIssue内部で一意で、連番で割り振られます。
 
 ## プレースホルダ
