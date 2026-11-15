@@ -125,3 +125,27 @@ func TestLoadContentSnapshot(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, before, store.calls)
 }
+
+func TestContentSnapshotRejectsNonJSONMetadata(t *testing.T) {
+	conf := config.Config{GitHub: &config.GitHubConfig{Username: "owner", Repository: "repo"}}
+	created := github.Timestamp{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+	store := &snapshotIssueStore{issues: []*github.Issue{{
+		Number: github.Ptr(42), State: github.Ptr("closed"), CreatedAt: &created,
+		Body: github.Ptr("---\ncustom:\n  1: one\n---\nBody"),
+	}}}
+	snapshot, err := LoadContentSnapshot(context.Background(), store, nil, conf, 20, false)
+	require.ErrorContains(t, err, "article 42 cannot be encoded as JSON")
+	require.Nil(t, snapshot)
+}
+
+func TestLoadContentSnapshotWithMinimalConfig(t *testing.T) {
+	conf := config.Config{GitHub: &config.GitHubConfig{Username: "owner", Repository: "repo"}}
+	created := github.Timestamp{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+	store := &snapshotIssueStore{issues: []*github.Issue{{
+		Number: github.Ptr(1), State: github.Ptr("closed"), CreatedAt: &created, Body: github.Ptr("Body"),
+	}}}
+	snapshot, err := LoadContentSnapshot(context.Background(), store, nil, conf, 20, false)
+	require.NoError(t, err)
+	require.Len(t, snapshot.Articles, 1)
+	require.Nil(t, conf.Output)
+}

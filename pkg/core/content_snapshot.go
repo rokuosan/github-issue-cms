@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -93,6 +94,9 @@ func NewContentSnapshot(articles []ContentArticle, pageSize int) (*ContentSnapsh
 		article.Date = date.UTC().Format(time.RFC3339Nano)
 		article.Tags = append([]string{}, article.Tags...)
 		article.Metadata = NewFrontMatter(article.Metadata).Values()
+		if _, err := json.Marshal(article); err != nil {
+			return nil, fmt.Errorf("article %d cannot be encoded as JSON: %w", article.ID, err)
+		}
 		s.Articles = append(s.Articles, article)
 	}
 	sortArticles(s.Articles, "date", "desc")
@@ -113,6 +117,9 @@ func LoadContentSnapshot(ctx context.Context, store IssueStore, assets AssetFetc
 	issues, err := store.ListIssues(ctx, IssueListQuery{Username: conf.GitHub.Username, Repository: conf.GitHub.Repository, Labels: conf.GitHub.Labels})
 	if err != nil {
 		return nil, err
+	}
+	if conf.Output == nil {
+		conf.Output = config.NewOutputConfig()
 	}
 	service := NewArticleService(conf)
 	articles := []ContentArticle{}
