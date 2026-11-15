@@ -26,11 +26,20 @@ type ArticleStore interface {
 
 // ArticleGenerator generates Hugo articles from GitHub issues.
 type ArticleGenerator struct {
-	issueRepo   IssueStore
-	articleRepo ArticleStore
-	service     *ArticleService
-	config      config.Config
-	logger      *slog.Logger
+	issueRepo      IssueStore
+	articleRepo    ArticleStore
+	service        *ArticleService
+	config         config.Config
+	logger         *slog.Logger
+	onArticleSaved func(article *Article) error
+}
+
+// SetOnArticleSaved sets an optional callback that is invoked after each
+// article is successfully saved. The callback can be used to perform
+// post-processing such as OGP image generation. Return an error to
+// log a warning but continue processing remaining articles.
+func (g *ArticleGenerator) SetOnArticleSaved(fn func(article *Article) error) {
+	g.onArticleSaved = fn
 }
 
 // NewArticleGenerator creates a new ArticleGenerator.
@@ -111,6 +120,17 @@ func (g *ArticleGenerator) Generate(ctx context.Context, username, repository st
 			g.logger.Error("Failed to save article", "issue", issue.GetNumber(), "error", err)
 			saveErr = errors.Join(saveErr, fmt.Errorf("issue #%d: %w", issue.GetNumber(), err))
 			continue
+		}
+		if g.onArticleSaved != nil {
+			if err := g.onArticleSaved(article); err != nil {
+				// Log at Error level: the CLI's default verbosity filters
+				// out Warn, which would make hook failures (e.g. OGP image
+				// generation) completely invisible in a normal run.
+				g.logger.Error("Post-save hook failed for article", "issue", issue.GetNumber(), "error", err)
+			}
+			if err := ctx.Err(); err != nil {
+				return successCount, err
+			}
 		}
 		successCount++
 	}

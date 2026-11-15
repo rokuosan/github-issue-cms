@@ -50,7 +50,10 @@ func (r *FileSystemArticleRepository) Save(ctx context.Context, article *Article
 	}
 
 	rendered := article.Clone()
-	applyFrontMatterOverrides(rendered, rendered.FrontMatter.Values())
+	extra := rendered.FrontMatter.Values()
+	applyFrontMatterOverrides(rendered, extra)
+	rendered.FrontMatter = NewFrontMatter(extra)
+	FilterArticleTags(rendered, conf)
 
 	datetime, err := rendered.ParseDateTime()
 	if err != nil {

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    width: 1200px;
+    height: 630px;
+    margin: 0;
+    padding: 48px;
+    background: #f7f7f7;
+    color: #171717;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .card {
+    width: 1104px;
+    height: 534px;
+    padding: 56px 64px 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px #e6e6e6;
+  }
+
+  .title {
+    max-width: 920px;
+    margin: 0;
+    font-size: 58px;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.045em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  .footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding-top: 22px;
+    border-top: 1px solid #e6e6e6;
+  }
+
+  .meta,
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 18px;
+    line-height: 1.4;
+    color: #666666;
+  }
+
+  .tags {
+    justify-content: flex-end;
+    font-size: 16px;
+  }
+
+  .tags span::before {
+    content: "#";
+    color: #999999;
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1 class="title">{{ .Title }}</h1>
+    <footer class="footer">
+      <div class="meta">
+        {{ if .Author }}<span>{{ .Author }}</span>{{ end }}
+        {{ if .Date }}<span>{{ .Date }}</span>{{ end }}
+        {{ if .Category }}<span>{{ .Category }}</span>{{ end }}
+      </div>
+      {{ if .Tags }}
+      <div class="tags">
+        {{ range .Tags }}<span>{{ . }}</span>{{ end }}
+      </div>
+      {{ end }}
+    </footer>
+  </main>
+</body>
+</html>

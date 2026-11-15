@@ -14,6 +14,7 @@ import (
 )
 
 const defaultHTTPTimeout = 30
+const maxRedirects = 10
 
 // HTTPImageRepository downloads images over HTTP.
 type HTTPImageRepository struct {
@@ -108,6 +109,9 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 			redirectReq.Header.Del("Authorization")
 			if r.isTrustedURL(redirectReq.URL.String()) {
 				redirectReq.Header.Set("Authorization", "token "+r.token)
+			}
+			if len(via) >= maxRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxRedirects)
 			}
 			if previousCheckRedirect != nil {
 				return previousCheckRedirect(redirectReq, via)

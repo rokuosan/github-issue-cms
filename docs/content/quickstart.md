@@ -56,6 +56,10 @@ Run the following command to convert all issues from the target repository to Ma
 $ github-issue-cms generate --token="<YOUR_GITHUB_ACCESS_TOKEN>"
 ```
 
+{{% callout type="warning" %}}
+If your issues have images attached via drag-and-drop (`https://github.com/user-attachments/assets/...`) in a **private** repository, use a **classic** Personal Access Token. Fine-grained PATs and GitHub App installation tokens (including the `GITHUB_TOKEN` provided by GitHub Actions) are not accepted by GitHub's attachment download endpoint, and image downloads will fail with a 404.
+{{% /callout %}}
+
 If issues have attached images, the output will be as follows:
 
 ```shell

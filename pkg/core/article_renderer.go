@@ -43,6 +43,13 @@ func (HugoArticleRenderer) Render(article *Article) (string, error) {
 	return fmt.Sprintf("---\n%s---\n\n%s\n", frontMatter, rendered.Content), nil
 }
 
+// ApplyFrontMatterOverrides applies frontmatter metadata overrides to an article.
+// This is used when saving articles (to merge issue-body frontmatter with GitHub metadata)
+// and when generating OGP images (so the image reflects the final rendered values).
+func ApplyFrontMatterOverrides(article *Article, extra map[string]any) {
+	applyFrontMatterOverrides(article, extra)
+}
+
 func applyFrontMatterOverrides(article *Article, extra map[string]any) {
 	if author, ok := stringValue(extra["author"]); ok {
 		article.Author = author

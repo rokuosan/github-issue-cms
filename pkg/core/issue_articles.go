@@ -77,22 +77,11 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 	images := extractTargetImages(content, time, s.config.Output.Images.TargetURLs())
 
 	var tags []string
-	excludedLabels := map[string]struct{}{}
-	if s.config.GitHub != nil {
-		excludedLabels = make(map[string]struct{}, len(s.config.GitHub.Labels))
-		for _, label := range s.config.GitHub.Labels {
-			excludedLabels[label] = struct{}{}
-		}
-	}
 	for _, label := range issue.Labels {
-		name := label.GetName()
-		if _, ok := excludedLabels[name]; ok {
-			continue
-		}
-		tags = append(tags, name)
+		tags = append(tags, label.GetName())
 	}
 
-	return &Article{
+	article := &Article{
 		Author:      issue.GetUser().GetLogin(),
 		Title:       issue.GetTitle(),
 		Date:        issue.GetCreatedAt().Format("2006-01-02T15:04:05Z"),
@@ -104,6 +93,27 @@ func (s *ArticleService) ConvertIssueToArticle(issue *github.Issue) *Article {
 		Key:         time,
 		Images:      images,
 	}
+	FilterArticleTags(article, s.config)
+	return article
+}
+
+// FilterArticleTags removes labels used to select issues from article tags.
+func FilterArticleTags(article *Article, conf config.Config) {
+	if article == nil || conf.GitHub == nil || len(article.Tags) == 0 || len(conf.GitHub.Labels) == 0 {
+		return
+	}
+
+	excluded := make(map[string]struct{}, len(conf.GitHub.Labels))
+	for _, label := range conf.GitHub.Labels {
+		excluded[label] = struct{}{}
+	}
+	filtered := article.Tags[:0]
+	for _, tag := range article.Tags {
+		if _, ok := excluded[tag]; !ok {
+			filtered = append(filtered, tag)
+		}
+	}
+	article.Tags = filtered
 }
 
 func extractTargetImages(content string, time string, targetURLs []string) []*Image {
