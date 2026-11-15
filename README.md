@@ -145,7 +145,9 @@ an empty `items` array with the actual totals.
 
 Article IDs are repository-local issue numbers. Details contain `content` (the
 Markdown body) and `metadata` (custom frontmatter), alongside the article fields.
-Recognized frontmatter fields override issue metadata before filtering. Open issues
+Custom frontmatter must be JSON-serializable; unsupported nested YAML mappings
+fail snapshot creation with the article ID. Recognized frontmatter fields override
+issue metadata before filtering. Open issues
 are drafts unless overridden with `draft: false`; drafts are excluded unless
 `--include-drafts` is passed. Labels configured in `github.labels` select issues
 and are removed from article tags, including tags supplied through frontmatter.
@@ -158,9 +160,11 @@ generator's output path templates. Failed attachment downloads fail startup or
 export so an incomplete snapshot is not published. Private repository attachment
 downloads have the token requirements described above.
 
-The API supports GET and HEAD and sends `Cache-Control: no-cache`. It does not add
-CORS headers; browser clients should use the same origin or configure CORS in a
-reverse proxy. In production, terminate HTTPS at the hosting platform or proxy.
+The API supports GET and HEAD and sends `Cache-Control: no-cache`. For a browser
+frontend hosted on another origin, use `--cors-origin https://www.example.com`
+or `--cors-origin '*'` for public cross-origin access. The default adds no CORS
+headers. Credentialed CORS requests are not supported. In production, terminate
+HTTPS at the hosting platform or proxy.
 
 ### Export static JSON content
 

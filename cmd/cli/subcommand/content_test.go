@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -205,4 +206,72 @@ func TestLoadContentSnapshotHonorsCancellation(t *testing.T) {
 	cancel()
 	_, err := loadContentSnapshot(ctx, contentOptions{})
 	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestValidateContentOrigin(t *testing.T) {
+	for _, origin := range []string{"", "*", "https://example.com", "http://localhost:3000", "http://[::1]:3000"} {
+		assert.NoError(t, validateContentOrigin(origin), origin)
+	}
+	for _, origin := range []string{
+		"null", "example.com", "ftp://example.com", "https://example.com/", "https://example.com/path",
+		"https://example.com?q=1", "https://example.com?", "https://example.com#fragment", "https://example.com#",
+		"https://user:secret@example.com", "http://:3000", "https://example.com:bad", "https://example.com\r\nX: injected",
+	} {
+		assert.Error(t, validateContentOrigin(origin), origin)
+	}
+}
+
+func TestServeCommandRejectsInvalidCORSBeforeLoading(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "token")
+	cmd := newServeCommand(contentDependencies{load: func(context.Context, contentOptions) (*core.ContentSnapshot, error) {
+		t.Fatal("invalid CORS option must fail before fetching GitHub")
+		return nil, nil
+	}})
+	cmd.SetArgs([]string{"--cors-origin", "https://example.com/path"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cors origin")
+}
+
+func TestContentCORS(t *testing.T) {
+	for _, tc := range []struct {
+		name, configured, origin, method, requestedMethod string
+		wantOrigin, wantMethods, wantVary                 string
+		wantStatus                                        int
+	}{
+		{name: "disabled", origin: "https://site.example", method: "GET", wantStatus: 200},
+		{name: "matching origin", configured: "https://site.example", origin: "https://site.example", method: "GET", wantOrigin: "https://site.example", wantVary: "Origin", wantStatus: 200},
+		{name: "matching HEAD", configured: "https://site.example", origin: "https://site.example", method: "HEAD", wantOrigin: "https://site.example", wantVary: "Origin", wantStatus: 200},
+		{name: "different origin", configured: "https://site.example", origin: "https://other.example", method: "GET", wantVary: "Origin", wantStatus: 200},
+		{name: "no origin", configured: "https://site.example", method: "GET", wantVary: "Origin", wantStatus: 200},
+		{name: "wildcard", configured: "*", origin: "https://site.example", method: "GET", wantOrigin: "*", wantStatus: 200},
+		{name: "wildcard without origin", configured: "*", method: "GET", wantStatus: 200},
+		{name: "preflight", configured: "https://site.example", origin: "https://site.example", method: "OPTIONS", requestedMethod: "GET", wantOrigin: "https://site.example", wantMethods: "GET, HEAD", wantVary: "Origin", wantStatus: 204},
+		{name: "wildcard HEAD preflight", configured: "*", origin: "https://site.example", method: "OPTIONS", requestedMethod: "HEAD", wantOrigin: "*", wantMethods: "GET, HEAD", wantStatus: 204},
+		{name: "preflight mismatch", configured: "https://site.example", origin: "https://other.example", method: "OPTIONS", requestedMethod: "GET", wantVary: "Origin", wantStatus: 405},
+		{name: "unsupported preflight method", configured: "*", origin: "https://site.example", method: "OPTIONS", requestedMethod: "POST", wantStatus: 405},
+		{name: "plain options", configured: "*", origin: "https://site.example", method: "OPTIONS", wantStatus: 405},
+		{name: "unsupported method", configured: "*", origin: "https://site.example", method: "POST", wantStatus: 405},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := withContentCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet && r.Method != http.MethodHead {
+					w.Header().Set("Allow", "GET, HEAD")
+					w.WriteHeader(http.StatusMethodNotAllowed)
+				}
+			}), tc.configured)
+			req := httptest.NewRequest(tc.method, "/data/articles", nil)
+			req.Header.Set("Origin", tc.origin)
+			req.Header.Set("Access-Control-Request-Method", tc.requestedMethod)
+			res := httptest.NewRecorder()
+			handler.ServeHTTP(res, req)
+			assert.Equal(t, tc.wantStatus, res.Code)
+			assert.Equal(t, tc.wantOrigin, res.Header().Get("Access-Control-Allow-Origin"))
+			assert.Equal(t, tc.wantMethods, res.Header().Get("Access-Control-Allow-Methods"))
+			assert.Equal(t, tc.wantVary, res.Header().Get("Vary"))
+			assert.Empty(t, res.Header().Get("Access-Control-Allow-Credentials"))
+		})
+	}
 }

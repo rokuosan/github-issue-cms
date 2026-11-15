@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -47,6 +48,7 @@ func NewServeCommand() *cobra.Command {
 func newServeCommand(deps contentDependencies) *cobra.Command {
 	var options contentOptions
 	var address string
+	var corsOrigin string
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Serve a snapshot of GitHub issues as a JSON content API",
@@ -65,18 +67,59 @@ Examples:
 			if _, _, err := net.SplitHostPort(address); err != nil {
 				return fmt.Errorf("invalid server address: %w", err)
 			}
+			if err := validateContentOrigin(corsOrigin); err != nil {
+				return err
+			}
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			snapshot, err := deps.load(ctx, options)
 			if err != nil {
 				return err
 			}
-			return deps.serve(ctx, cmd.OutOrStdout(), address, core.NewContentHandler(snapshot))
+			handler := withContentCORS(core.NewContentHandler(snapshot), corsOrigin)
+			return deps.serve(ctx, cmd.OutOrStdout(), address, handler)
 		},
 	}
 	addContentFlags(cmd, &options)
 	cmd.Flags().StringVar(&address, "addr", "localhost:8080", "HTTP listen address (use :8080 for deployment)")
+	cmd.Flags().StringVar(&corsOrigin, "cors-origin", "", "Allow browser reads from this HTTP(S) origin, or * for any origin")
 	return cmd
+}
+
+func validateContentOrigin(origin string) error {
+	if origin == "" || origin == "*" {
+		return nil
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
+		parsed.Hostname() == "" || parsed.User != nil || origin != parsed.Scheme+"://"+parsed.Host {
+		return fmt.Errorf("cors origin must be * or an absolute HTTP(S) origin without a path, query, or credentials")
+	}
+	return nil
+}
+
+func withContentCORS(handler http.Handler, origin string) http.Handler {
+	if origin == "" {
+		return handler
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if origin != "*" {
+			w.Header().Add("Vary", "Origin")
+		}
+		requestOrigin := r.Header.Get("Origin")
+		allowed := requestOrigin != "" && (origin == "*" || requestOrigin == origin)
+		preflightMethod := r.Header.Get("Access-Control-Request-Method")
+		preflight := r.Method == http.MethodOptions && (preflightMethod == http.MethodGet || preflightMethod == http.MethodHead)
+		if allowed && (r.Method == http.MethodGet || r.Method == http.MethodHead || preflight) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			if preflight {
+				w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD")
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		handler.ServeHTTP(w, r)
+	})
 }
 
 // NewExportCommand creates the static content export subcommand.
