@@ -57,6 +57,8 @@ If `targets` is omitted, the built-in GitHub attachment URL rules are used.
 If `targets: []` is specified, no image URLs are detected or replaced.
 Wildcard host patterns such as `https://*.githubusercontent.com` are also supported.
 
+The GitHub token is sent only to HTTPS URLs on `github.com`, `user-images.githubusercontent.com`, and `private-user-images.githubusercontent.com` (exact hosts, without explicit ports). The same rule applies to redirects. Adding other hosts to `targets` does not send the token to them.
+
 `[:id]` will be replaced with the image ID. The image ID is unique within each issue and assigned sequentially.
 
 ## Placeholders

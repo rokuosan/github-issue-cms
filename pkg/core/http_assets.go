@@ -52,8 +52,8 @@ func (r *HTTPImageRepository) Fetch(ctx context.Context, image *Image) (*ImageAs
 
 // downloadImage downloads an image over HTTP.
 func (r *HTTPImageRepository) downloadImage(ctx context.Context, imageURL string) (io.ReadCloser, string, error) {
-	// Only send the token over HTTPS to prevent leaking credentials.
-	if r.token != "" && isHTTPS(imageURL) {
+	// Only send the GitHub token to known GitHub image hosts over HTTPS.
+	if r.token != "" && isGitHubImageURL(imageURL) {
 		if body, contentType, err := r.sendRequest(ctx, imageURL, true); err == nil {
 			return body, contentType, nil
 		} else {
@@ -70,7 +70,7 @@ func (r *HTTPImageRepository) downloadImage(ctx context.Context, imageURL string
 		}
 	}
 
-	// No token was configured or the URL is not HTTPS — only an unauthenticated request is possible.
+	// No token is configured or the URL is not a known HTTPS GitHub image host.
 	return r.sendRequest(ctx, imageURL, false)
 }
 
@@ -104,13 +104,14 @@ func (r *HTTPImageRepository) sendRequest(ctx context.Context, url string, inclu
 }
 
 // clientWithRedirectGuard returns a copy of the HTTP client that strips the
-// Authorization header when redirecting from HTTPS to HTTP to prevent token
-// leakage. Redirects to other HTTPS URLs retain the token.
+// Authorization header unless the destination is a known GitHub image host
+// using HTTPS.
 func (r *HTTPImageRepository) clientWithRedirectGuard() *http.Client {
 	c := *r.client
 	c.CheckRedirect = func(redirectReq *http.Request, via []*http.Request) error {
-		if !isHTTPS(redirectReq.URL.String()) {
-			redirectReq.Header.Del("Authorization")
+		redirectReq.Header.Del("Authorization")
+		if isGitHubImageURL(redirectReq.URL.String()) {
+			redirectReq.Header.Set("Authorization", "token "+r.token)
 		}
 		if len(via) >= maxRedirects {
 			return fmt.Errorf("stopped after %d redirects", maxRedirects)
@@ -120,12 +121,18 @@ func (r *HTTPImageRepository) clientWithRedirectGuard() *http.Client {
 	return &c
 }
 
-func isHTTPS(rawURL string) bool {
+// isGitHubImageURL is independent of the configurable image replacement targets.
+func isGitHubImageURL(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
-	if err != nil {
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.User != nil {
 		return false
 	}
-	return strings.EqualFold(parsed.Scheme, "https")
+	switch strings.ToLower(parsed.Host) {
+	case "github.com", "user-images.githubusercontent.com", "private-user-images.githubusercontent.com":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeContentType(value string) string {
