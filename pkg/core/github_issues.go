@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v93/github"
 )
 
 // GitHubIssueRepository retrieves issues via the GitHub API.
@@ -27,9 +27,9 @@ func NewGitHubIssueRepositoryWithLogger(token string, logger *slog.Logger) (Issu
 		return nil, fmt.Errorf("GitHub token is required")
 	}
 
-	client := github.NewClient(nil).WithAuthToken(token)
-	if client == nil {
-		return nil, fmt.Errorf("failed to create GitHub client")
+	client, err := github.NewClient(github.WithAuthToken(token))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
 	return &GitHubIssueRepository{

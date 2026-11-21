@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -135,7 +135,7 @@ func TestArticleGenerator_GetIssues(t *testing.T) {
 	conf := *config.NewConfig()
 
 	// Create a mock IssueRepository.
-	issueRepo := newMockIssueRepository(server.URL)
+	issueRepo := newMockIssueRepository(t, server.URL)
 	imageRepo := NewHTTPImageRepository("")
 	articleRepo := NewFileSystemArticleRepository(imageRepo)
 	articleService := NewArticleService(conf)
@@ -208,7 +208,7 @@ func TestArticleGenerator_Generate(t *testing.T) {
 	conf.Output.Images.Filename = "[:id].png"
 
 	// Create a mock IssueRepository.
-	issueRepo := newMockIssueRepository(server.URL)
+	issueRepo := newMockIssueRepository(t, server.URL)
 	imageRepo := NewHTTPImageRepository("")
 	articleRepo := NewFileSystemArticleRepository(imageRepo)
 	articleService := NewArticleService(conf)
@@ -233,7 +233,7 @@ func TestArticleGenerator_Generate_ReturnsContextErrorWhenHookCancels(t *testing
 
 	gen := &ArticleGenerator{
 		issueRepo: &stubIssueStore{issues: []*github.Issue{{
-			Number:    github.Ptr(1),
+			Number:    Ptr(1),
 			Title:     Ptr("Issue 1"),
 			Body:      Ptr("Body 1"),
 			CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
@@ -262,7 +262,7 @@ func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 		issueRepo: &stubIssueStore{
 			issues: []*github.Issue{
 				{
-					Number:    github.Ptr(1),
+					Number:    Ptr(1),
 					Title:     Ptr("Issue 1"),
 					Body:      Ptr("Body 1"),
 					CreatedAt: generatorParseTime("2021-01-01T00:00:00Z"),
@@ -270,7 +270,7 @@ func TestArticleGenerator_Generate_ReturnsErrorWhenSaveFails(t *testing.T) {
 					State:     Ptr("closed"),
 				},
 				{
-					Number:    github.Ptr(2),
+					Number:    Ptr(2),
 					Title:     Ptr("Issue 2"),
 					Body:      Ptr("Body 2"),
 					CreatedAt: generatorParseTime("2021-01-02T00:00:00Z"),
@@ -310,9 +310,9 @@ func generatorParseTime(s string) *github.Timestamp {
 }
 
 // newMockIssueRepository creates an IssueRepository for the mock server.
-func newMockIssueRepository(serverURL string) IssueStore {
-	client := github.NewClient(nil)
-	client, _ = client.WithEnterpriseURLs(serverURL, serverURL)
+func newMockIssueRepository(t *testing.T, serverURL string) IssueStore {
+	t.Helper()
+	client := mustNewGitHubClient(t, github.WithEnterpriseURLs(serverURL, serverURL))
 
 	// Use mockIssueRepository.
 	return &mockIssueRepository{client: client}

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 )
 

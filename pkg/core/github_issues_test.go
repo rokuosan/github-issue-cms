@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,9 +76,7 @@ func TestGitHubIssueRepository_ListIssues(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := github.NewClient(nil)
-		client, err := client.WithEnterpriseURLs(server.URL, server.URL)
-		assert.NoError(t, err)
+		client := mustNewGitHubClient(t, github.WithEnterpriseURLs(server.URL, server.URL))
 		repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 		issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
@@ -88,7 +86,7 @@ func TestGitHubIssueRepository_ListIssues(t *testing.T) {
 	})
 
 	t.Run("空のユーザー名", func(t *testing.T) {
-		client := github.NewClient(nil)
+		client := mustNewGitHubClient(t)
 		repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 		issues, err := repo.ListIssues(context.Background(), IssueListQuery{Repository: "testrepo"})
@@ -98,7 +96,7 @@ func TestGitHubIssueRepository_ListIssues(t *testing.T) {
 	})
 
 	t.Run("空のリポジトリ名", func(t *testing.T) {
-		client := github.NewClient(nil)
+		client := mustNewGitHubClient(t)
 		repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 		issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser"})
@@ -152,9 +150,7 @@ func TestGitHubIssueRepository_ListIssues_FiltersPRs(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := github.NewClient(nil)
-	client, err := client.WithEnterpriseURLs(server.URL, server.URL)
-	assert.NoError(t, err)
+	client := mustNewGitHubClient(t, github.WithEnterpriseURLs(server.URL, server.URL))
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 	issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
@@ -202,9 +198,7 @@ func TestGitHubIssueRepository_ListIssues_Pagination(t *testing.T) {
 	defer server.Close()
 	serverURL = server.URL
 
-	client := github.NewClient(nil)
-	client, err := client.WithEnterpriseURLs(server.URL, server.URL)
-	assert.NoError(t, err)
+	client := mustNewGitHubClient(t, github.WithEnterpriseURLs(server.URL, server.URL))
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 	issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
@@ -222,9 +216,7 @@ func TestGitHubIssueRepository_ListIssues_InvalidCredentials(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := github.NewClient(nil).WithAuthToken("invalid-token")
-	client, err := client.WithEnterpriseURLs(server.URL, server.URL)
-	assert.NoError(t, err)
+	client := mustNewGitHubClient(t, github.WithAuthToken("invalid-token"), github.WithEnterpriseURLs(server.URL, server.URL))
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 	issues, err := repo.ListIssues(context.Background(), IssueListQuery{Username: "testuser", Repository: "testrepo"})
@@ -270,9 +262,7 @@ func TestGitHubIssueRepository_ListIssues_WithLabels(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := github.NewClient(nil)
-	client, err := client.WithEnterpriseURLs(server.URL, server.URL)
-	assert.NoError(t, err)
+	client := mustNewGitHubClient(t, github.WithEnterpriseURLs(server.URL, server.URL))
 	repo := &GitHubIssueRepository{client: client, logger: slog.Default()}
 
 	issues, err := repo.ListIssues(context.Background(), IssueListQuery{
@@ -283,4 +273,13 @@ func TestGitHubIssueRepository_ListIssues_WithLabels(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, issues, 1)
 	assert.Equal(t, "Labeled Issue", issues[0].GetTitle())
+}
+
+func mustNewGitHubClient(t *testing.T, options ...github.ClientOptionsFunc) *github.Client {
+	t.Helper()
+	client, err := github.NewClient(options...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return client
 }
