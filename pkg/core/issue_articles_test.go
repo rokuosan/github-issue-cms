@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/rokuosan/github-issue-cms/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,8 +76,8 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 				User:      &github.User{Login: Ptr("user")},
 				State:     Ptr("closed"),
 				Labels: []*github.Label{
-					{Name: Ptr("bug")},
-					{Name: Ptr("enhancement")},
+					{Name: "bug"},
+					{Name: "enhancement"},
 				},
 			},
 			want: map[string]interface{}{
@@ -93,8 +93,8 @@ func TestArticleService_ConvertIssueToArticle(t *testing.T) {
 				User:      &github.User{Login: Ptr("user")},
 				State:     Ptr("closed"),
 				Labels: []*github.Label{
-					{Name: Ptr("published")},
-					{Name: Ptr("go")},
+					{Name: "published"},
+					{Name: "go"},
 				},
 			},
 			want: map[string]interface{}{
