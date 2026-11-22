@@ -1,0 +1,52 @@
+name: Tag and release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+jobs:
+  tagpr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prepare release PR or create tag
+        id: tagpr
+        uses: Songmu/tagpr@047aec4b6c0ce166f52958b5a97f5a3d927fd65b # v1.22.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # GITHUB_TOKEN-created tags do not trigger a separate tag-push workflow.
+      - name: Check out created release tag
+        if: steps.tagpr.outputs.tag != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.tagpr.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        if: steps.tagpr.outputs.tag != ''
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Run GoReleaser
+        if: steps.tagpr.outputs.tag != ''
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
