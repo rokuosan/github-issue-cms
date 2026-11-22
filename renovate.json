@@ -2,5 +2,21 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Group all Go version updates (go.mod, Dockerfile golang, mise.toml) into a single PR",
+      "groupName": "Go version",
+      "groupSlug": "go-version",
+      "matchPackageNames": ["go", "golang", "golang/go"],
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
+      "description": "Group all GitHub Actions updates",
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["digest", "minor", "pin", "patch"]
+    }
   ]
 }
