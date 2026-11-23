@@ -38,6 +38,8 @@ with frontmatter and downloads attached images.`,
 
 	// Register subcommands.
 	rootCmd.AddCommand(subcommand.NewGenerateCommand())
+	rootCmd.AddCommand(subcommand.NewServeCommand())
+	rootCmd.AddCommand(subcommand.NewExportCommand())
 	rootCmd.AddCommand(subcommand.NewInitCommand())
 	rootCmd.AddCommand(subcommand.NewMigrateCommand())
 	rootCmd.AddCommand(subcommand.NewVersionCommand(&Version))
