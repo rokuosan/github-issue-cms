@@ -3,20 +3,45 @@ name: Tag and release
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [labeled, unlabeled]
+  workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: read
+concurrency:
+  group: tagpr
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   tagpr:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.state == 'open' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.head_ref, 'tagpr-from-') &&
+        (
+          startsWith(github.event.label.name, 'tagpr:') ||
+          startsWith(github.event.label.name, 'tagpr/')
+        )
+      )
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    outputs:
+      tag: ${{ steps.tagpr.outputs.tag }}
     steps:
       - name: Check out release branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
@@ -26,27 +51,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # GITHUB_TOKEN-created tags do not trigger a separate tag-push workflow.
-      - name: Check out created release tag
-        if: steps.tagpr.outputs.tag != ''
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ steps.tagpr.outputs.tag }}
-          fetch-depth: 0
-          persist-credentials: false
+  # GITHUB_TOKEN-created tags do not trigger separate tag-push workflows,
+  # so invoke the GoReleaser and container publishing workflows explicitly.
+  release-go:
+    needs: tagpr
+    if: needs.tagpr.outputs.tag != '' && github.event_name != 'pull_request'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-golang.yaml
+    with:
+      tag: ${{ needs.tagpr.outputs.tag }}
 
-      - name: Set up Go
-        if: steps.tagpr.outputs.tag != ''
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-
-      - name: Run GoReleaser
-        if: steps.tagpr.outputs.tag != ''
-        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release-container:
+    needs: tagpr
+    if: needs.tagpr.outputs.tag != '' && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write
+    uses: ./.github/workflows/build-container-image.yaml
+    with:
+      tag: ${{ needs.tagpr.outputs.tag }}

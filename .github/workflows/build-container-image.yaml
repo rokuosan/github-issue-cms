@@ -6,7 +6,19 @@ on:
       - main
     tags:
       - "v*"
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to build and publish (e.g. v1.3.0)"
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional release tag to build and publish (e.g. v1.3.0)"
+        required: false
+        type: string
+        default: ""
   pull_request:
     types:
       - opened
@@ -22,24 +34,57 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
-      pull-requests: read
       id-token: write
-      actions: write
       packages: write
       attestations: write
     steps:
+      - name: Resolve release context
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ -n "$INPUT_TAG" ]]; then
+            if [[ ! "$INPUT_TAG" =~ ^v[0-9A-Za-z._+-]+$ ]]; then
+              echo "::error::Invalid release tag: $INPUT_TAG"
+              exit 1
+            fi
+            {
+              echo "is_release=true"
+              echo "tag=$INPUT_TAG"
+              echo "ref=refs/tags/$INPUT_TAG"
+            } >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "push" && "$GITHUB_REF" == refs/tags/v* ]]; then
+            {
+              echo "is_release=true"
+              echo "tag=$GITHUB_REF_NAME"
+              echo "ref=$GITHUB_REF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "is_release=false"
+              echo "tag="
+              echo "ref="
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.ref }}
+          persist-credentials: false
       - name: Set up QEMU
         if: ${{ github.event_name != 'pull_request' }}
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Login to GitHub Container Registry
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ steps.release.outputs.is_release == 'true' }}
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -51,9 +96,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=raw,value={{date 'YYYYMMDD-HHmmss' tz='Asia/Tokyo'}}-{{sha}},enable={{is_default_branch}}
+            type=raw,value=${{ steps.release.outputs.tag || 'untagged' }},enable=${{ steps.release.outputs.is_release == 'true' }}
+            type=raw,value=latest,enable=${{ steps.release.outputs.is_release == 'true' && !contains(steps.release.outputs.tag, '-') }}
+            type=raw,value={{date 'YYYYMMDD-HHmmss' tz='Asia/Tokyo'}}-{{sha}},enable=${{ steps.release.outputs.is_release != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           labels: |
             org.opencontainers.image.title=GitHub Issue CMS
             org.opencontainers.image.description=Convert GitHub Issues to Markdown files
@@ -67,19 +112,21 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
+            VERSION=${{ steps.release.outputs.tag || steps.meta.outputs.version || 'dev' }}
           platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-          provenance: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && 'mode=max' || false }}
+          push: ${{ steps.release.outputs.is_release == 'true' }}
+          provenance: ${{ steps.release.outputs.is_release == 'true' && 'mode=max' || false }}
           cache-from: type=gha,scope=build-container-image
           cache-to: type=gha,mode=max,scope=build-container-image
       - name: Display image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+        env:
+          IMAGE_DIGEST: ${{ steps.docker_build.outputs.digest }}
+        run: echo "$IMAGE_DIGEST"
 
       - name: Generate artifact attestation
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ steps.release.outputs.is_release == 'true' }}
         uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/${{ github.repository }}
